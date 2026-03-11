@@ -30,7 +30,7 @@ function LoadingState() {
     <div className="py-16 flex flex-col items-center justify-center">
       <div className="relative w-10 h-10 mb-4">
         <div className="absolute inset-0 rounded-full border-2 border-gray-200"></div>
-        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-indigo-600 animate-spin"></div>
+        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-blue-600 animate-spin"></div>
       </div>
       <p className="text-gray-400 text-sm">Loading data...</p>
     </div>
@@ -78,8 +78,8 @@ function SimpleListTab({ data, onAdd, onDelete, loading, fields, addLabel, tabLa
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-indigo-100 flex items-center justify-center">
-              <svg className="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <div className="w-6 h-6 rounded-md bg-blue-100 flex items-center justify-center">
+              <svg className="w-3.5 h-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
             </div>
@@ -99,7 +99,7 @@ function SimpleListTab({ data, onAdd, onDelete, loading, fields, addLabel, tabLa
                     value={form[f.name] || ''}
                     onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}
                     onKeyDown={handleKeyDown}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 resize-none"
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 resize-none"
                     rows={3}
                   />
                 ) : (
@@ -109,7 +109,7 @@ function SimpleListTab({ data, onAdd, onDelete, loading, fields, addLabel, tabLa
                     value={form[f.name] || ''}
                     onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}
                     onKeyDown={handleKeyDown}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200"
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
                   />
                 )}
               </div>
@@ -121,7 +121,7 @@ function SimpleListTab({ data, onAdd, onDelete, loading, fields, addLabel, tabLa
               disabled={adding || !isFormValid}
               className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
                 isFormValid && !adding
-                  ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm hover:shadow-md active:scale-[0.98]'
+                  ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow-md active:scale-[0.98]'
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'
               }`}
             >
@@ -375,7 +375,7 @@ export default function MasterPage() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-200">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-200">
               <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -397,7 +397,7 @@ export default function MasterPage() {
                 onClick={() => setActiveTab(tab.key)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
                   activeTab === tab.key
-                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200'
+                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
                     : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
                 }`}
               >

@@ -27,10 +27,10 @@ function Modal({ title, onClose, children, size = 'md' }) {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white sticky top-0 z-10">
-          <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+          <h3 className="text-xl font-semibold text-gray-900">{title}</h3>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-800 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -91,7 +91,7 @@ function Pagination({ currentPage, totalPages, totalItems, onPageChange }) {
 
         {getPages().map((page, i) =>
           page === '...' ? (
-            <span key={`dots-${i}`} className="w-9 h-9 flex items-center justify-center text-gray-400 text-sm">
+            <span key={`dots-${i}`} className="w-9 h-9 flex items-center justify-center text-gray-800 text-sm">
               ···
             </span>
           ) : (
@@ -100,7 +100,7 @@ function Pagination({ currentPage, totalPages, totalItems, onPageChange }) {
               onClick={() => onPageChange(page)}
               className={`w-9 h-9 rounded-lg text-sm font-medium transition-all duration-200 ${
                 currentPage === page
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-gray-600 hover:bg-gray-100 border border-transparent hover:border-gray-200'
               }`}
             >
@@ -126,7 +126,7 @@ function Pagination({ currentPage, totalPages, totalItems, onPageChange }) {
 function SelectChevron() {
   return (
     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-      <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <svg className="w-4 h-4 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
       </svg>
     </div>
@@ -136,7 +136,7 @@ function SelectChevron() {
 function DetailRow({ label, value }) {
   return (
     <div className="py-2.5 px-1">
-      <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-0.5">{label}</p>
+      <p className="text-[10px] uppercase tracking-wider text-gray-800 font-semibold mb-0.5">{label}</p>
       <p className="text-sm font-medium text-gray-800">{value || '—'}</p>
     </div>
   );
@@ -146,7 +146,7 @@ function getInputClasses(hasError) {
   return `w-full px-4 py-2.5 rounded-lg border bg-white text-sm text-gray-800 placeholder-gray-400 transition-all duration-200 focus:outline-none focus:ring-2 ${
     hasError
       ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500'
-      : 'border-gray-300 focus:ring-indigo-500/20 focus:border-indigo-500'
+      : 'border-gray-300 focus:ring-blue-500/20 focus:border-blue-500'
   }`;
 }
 
@@ -281,7 +281,7 @@ export default function Reports() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-200">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-200">
               <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
@@ -299,7 +299,7 @@ export default function Reports() {
               onClick={() => setShowFilters(!showFilters)}
               className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all duration-200 ${
                 showFilters || activeFilterCount > 0
-                  ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                  ? 'bg-blue-50 border-blue-200 text-blue-700'
                   : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
               }`}
             >
@@ -308,7 +308,7 @@ export default function Reports() {
               </svg>
               Filters
               {activeFilterCount > 0 && (
-                <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">
+                <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
                   {activeFilterCount}
                 </span>
               )}
@@ -332,7 +332,7 @@ export default function Reports() {
           <div className="p-4">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-4 h-4 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
@@ -341,12 +341,12 @@ export default function Reports() {
                 placeholder="Search by name, company, phone number..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-11 pr-10 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200"
+                className="w-full pl-11 pr-10 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
               />
               {search && (
                 <button
                   onClick={() => setSearch('')}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-800 hover:text-gray-600"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -361,12 +361,12 @@ export default function Reports() {
             <div className="px-4 pb-4 border-t border-gray-100 pt-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1.5">Expo</label>
+                  <label className="block text-[10px] uppercase tracking-wider text-gray-800 font-semibold mb-1.5">Expo</label>
                   <div className="relative">
                     <select
                       value={filters.expo_id}
                       onChange={(e) => handleFilterChange('expo_id', e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 appearance-none cursor-pointer transition-all duration-200"
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer transition-all duration-200"
                     >
                       <option value="">All Expos</option>
                       {expos.map((ex) => <option key={ex.id} value={ex.id}>{ex.expo_name}</option>)}
@@ -375,12 +375,12 @@ export default function Reports() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1.5">Industry</label>
+                  <label className="block text-[10px] uppercase tracking-wider text-gray-800 font-semibold mb-1.5">Industry</label>
                   <div className="relative">
                     <select
                       value={filters.industry_type}
                       onChange={(e) => handleFilterChange('industry_type', e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 appearance-none cursor-pointer transition-all duration-200"
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer transition-all duration-200"
                     >
                       <option value="">All Industries</option>
                       {industries.map((i) => <option key={i} value={i}>{i}</option>)}
@@ -389,12 +389,12 @@ export default function Reports() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1.5">Enquiry Type</label>
+                  <label className="block text-[10px] uppercase tracking-wider text-gray-800 font-semibold mb-1.5">Enquiry Type</label>
                   <div className="relative">
                     <select
                       value={filters.enquiry_type}
                       onChange={(e) => handleFilterChange('enquiry_type', e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 appearance-none cursor-pointer transition-all duration-200"
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer transition-all duration-200"
                     >
                       <option value="">All Enquiries</option>
                       {enquiries.map((eq) => <option key={eq} value={eq}>{eq}</option>)}
@@ -405,12 +405,12 @@ export default function Reports() {
               </div>
               {activeFilterCount > 0 && (
                 <div className="mt-3 flex items-center justify-between">
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-gray-800">
                     {activeFilterCount} active filter{activeFilterCount > 1 ? 's' : ''}
                   </p>
                   <button
                     onClick={handleClearFilters}
-                    className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+                    className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
                   >
                     Clear all filters
                   </button>
@@ -422,14 +422,14 @@ export default function Reports() {
 
         {/* Table Card */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px]">
+          <div className="overflow-x-auto max-h-[55vh]">
+            <table className="w-full min-w-[1000px] relative ">
               <thead>
-                <tr className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
+                <tr className="bg-gray-300 border-b border-gray-200 sticky top-0">
                   {['#', 'Expo', 'Company', 'Customer', 'Phone', 'City', 'Industry', 'Follow-up', 'Employee', 'Actions'].map((h) => (
                     <th
                       key={h}
-                      className="px-4 py-3 text-left text-[10px] uppercase tracking-wider font-semibold text-gray-500"
+                      className="px-4 py-3 text-left text-[10px] uppercase tracking-wider font-semibold text-gray-900"
                     >
                       {h}
                     </th>
@@ -443,9 +443,9 @@ export default function Reports() {
                       <div className="flex flex-col items-center justify-center">
                         <div className="relative w-10 h-10 mb-3">
                           <div className="absolute inset-0 rounded-full border-2 border-gray-200" />
-                          <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-indigo-600 animate-spin" />
+                          <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-blue-600 animate-spin" />
                         </div>
-                        <p className="text-sm text-gray-400">Loading customer records...</p>
+                        <p className="text-sm text-gray-800">Loading customer records...</p>
                       </div>
                     </td>
                   </tr>
@@ -454,12 +454,12 @@ export default function Reports() {
                     <td colSpan={10} className="py-20">
                       <div className="flex flex-col items-center justify-center">
                         <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-3">
-                          <svg className="w-7 h-7 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <svg className="w-7 h-7 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-2.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                           </svg>
                         </div>
                         <p className="text-sm font-medium text-gray-500">No customers found</p>
-                        <p className="text-xs text-gray-400 mt-1">Try adjusting your search or filters</p>
+                        <p className="text-xs text-gray-800 mt-1">Try adjusting your search or filters</p>
                       </div>
                     </td>
                   </tr>
@@ -467,71 +467,71 @@ export default function Reports() {
                   paginatedCustomers.map((c, idx) => {
                     const globalIdx = (currentPage - 1) * PAGE_SIZE + idx + 1;
                     return (
-                      <tr key={c.id} className="group hover:bg-indigo-50/30 transition-colors duration-150">
-                        <td className="px-4 py-3">
-                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-gray-100 text-[11px] font-bold text-gray-500">
+                      <tr key={c.id} className="group hover:bg-blue-50/30 transition-colors duration-150">
+                        <td className="px-4 py-3 border border-gray-500">
+                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-gray-100 text-[11px] text-gray-900">
                             {globalIdx}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-xs text-gray-600 max-w-[120px] truncate" title={c.expo_name}>
+                        <td className="px-4 py-3 border border-gray-500 text-xs text-gray-900 max-w-[120px] truncate" title={c.expo_name}>
                           {c.expo_name || '—'}
                         </td>
-                        <td className="px-4 py-3 max-w-[150px]">
+                        <td className="px-4 py-3 border border-gray-500 max-w-[150px]">
                           <p className="text-sm font-semibold text-gray-900 truncate" title={c.company_name}>{c.company_name}</p>
                         </td>
-                        <td className="px-4 py-3 max-w-[130px]">
+                        <td className="px-4 py-3 border border-gray-500 max-w-[130px]">
                           <p className="text-sm text-gray-700 truncate" title={c.customer_name}>{c.customer_name}</p>
                         </td>
-                        <td className="px-4 py-3">
-                          <span className="text-xs font-mono text-gray-600 whitespace-nowrap">{c.phone_number}</span>
+                        <td className="px-4 py-3 border border-gray-500">
+                          <span className="text-xs font-mono text-gray-900 whitespace-nowrap">{c.phone_number}</span>
                         </td>
-                        <td className="px-4 py-3 text-xs text-gray-600">{c.city || '—'}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 border border-gray-500 text-xs text-gray-900">{c.city || '—'}</td>
+                        <td className="px-4 py-3 border border-gray-500">
                           {c.industry_type ? (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 ring-1 ring-blue-200">
                               {c.industry_type}
                             </span>
                           ) : (
-                            <span className="text-xs text-gray-400">—</span>
+                            <span className="text-xs text-gray-800">—</span>
                           )}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 border border-gray-500">
                           {c.followup_date ? (
                             <span className="text-xs font-mono text-gray-600 whitespace-nowrap">
                               {new Date(c.followup_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </span>
                           ) : (
-                            <span className="text-xs text-gray-400">—</span>
+                            <span className="text-xs text-gray-800">—</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-xs text-gray-500">{c.employee_name || '—'}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <td className="px-4 py-3 border border-gray-500 text-xs text-gray-900">{c.employee_name || '—'}</td>
+                        <td className="px-4 py-3 border border-gray-500">
+                          <div className="flex items-center gap-1">
                             <button
                               onClick={() => setViewRecord(c)}
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200"
+                              className="w-10 h-10 cursor-pointer rounded-lg flex items-center justify-center text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200"
                               title="View"
                             >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                               </svg>
                             </button>
                             <button
                               onClick={() => setEditRecord({ ...c })}
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-all duration-200"
+                              className="w-10 h-10 cursor-pointer rounded-lg flex items-center justify-center text-gray-600 hover:text-amber-600 hover:bg-amber-50 transition-all duration-200"
                               title="Edit"
                             >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                               </svg>
                             </button>
                             <button
                               onClick={() => setDeleteId(c.id)}
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200"
+                              className="w-10 h-10 cursor-pointer rounded-lg flex items-center justify-center text-gray-600 hover:text-red-600 hover:bg-red-50 transition-all duration-200"
                               title="Delete"
                             >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                               </svg>
                             </button>
@@ -562,14 +562,14 @@ export default function Reports() {
             <div className="space-y-4">
               {/* Customer header */}
               <div className="flex items-center gap-4 pb-4 border-b border-gray-100">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-lg font-bold text-indigo-600">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-blue-100 flex items-center justify-center flex-shrink-0">
+                  <span className="text-lg font-bold text-blue-600">
                     {viewRecord.customer_name?.charAt(0)?.toUpperCase() || '?'}
                   </span>
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-gray-900">{viewRecord.customer_name}</h3>
-                  <p className="text-sm text-gray-500">{viewRecord.company_name}</p>
+                  <p className="text-sm text-gray-900">{viewRecord.company_name}</p>
                 </div>
               </div>
 
@@ -595,7 +595,7 @@ export default function Reports() {
 
               {viewRecord.remarks && (
                 <div className="pt-3 border-t border-gray-100">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1">Remarks</p>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-800 font-semibold mb-1">Remarks</p>
                   <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-lg p-3">{viewRecord.remarks}</p>
                 </div>
               )}
@@ -621,7 +621,7 @@ export default function Reports() {
                   ['followup_date', 'Follow-up Date', 'date'],
                 ].map(([field, label, type]) => (
                   <div key={field}>
-                    <label className="block text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1.5">
+                    <label className="block text-[10px] uppercase tracking-wider text-gray-800 font-semibold mb-1.5">
                       {label}
                     </label>
                     {type === 'select-enquiry' ? (
@@ -629,7 +629,7 @@ export default function Reports() {
                         <select
                           value={editRecord[field] || ''}
                           onChange={(e) => setEditRecord((prev) => ({ ...prev, [field]: e.target.value }))}
-                          className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 appearance-none cursor-pointer transition-all duration-200"
+                          className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer transition-all duration-200"
                         >
                           <option value="">Select...</option>
                           {enquiries.map((eq) => <option key={eq} value={eq}>{eq}</option>)}
@@ -641,7 +641,7 @@ export default function Reports() {
                         <select
                           value={editRecord[field] || ''}
                           onChange={(e) => setEditRecord((prev) => ({ ...prev, [field]: e.target.value }))}
-                          className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 appearance-none cursor-pointer transition-all duration-200"
+                          className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer transition-all duration-200"
                         >
                           <option value="">Select...</option>
                           {industries.map((i) => <option key={i} value={i}>{i}</option>)}
@@ -668,11 +668,11 @@ export default function Reports() {
               </div>
 
               <div>
-                <label className="block text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1.5">Remarks</label>
+                <label className="block text-[10px] uppercase tracking-wider text-gray-800 font-semibold mb-1.5">Remarks</label>
                 <textarea
                   value={editRecord.remarks || ''}
                   onChange={(e) => setEditRecord((prev) => ({ ...prev, remarks: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 resize-none"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 resize-none"
                   rows={3}
                 />
               </div>
@@ -690,8 +690,8 @@ export default function Reports() {
                   disabled={updating}
                   className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm ${
                     updating
-                      ? 'bg-indigo-400 text-white cursor-not-allowed'
-                      : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-md active:scale-[0.98]'
+                      ? 'bg-blue-400 text-white cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md active:scale-[0.98]'
                   }`}
                 >
                   {updating ? (
@@ -726,7 +726,7 @@ export default function Reports() {
                 </svg>
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Are you sure?</h3>
-              <p className="text-sm text-gray-500 mb-6 max-w-xs mx-auto">
+              <p className="text-sm text-gray-900 mb-6 max-w-xs mx-auto">
                 This action cannot be undone. The customer record will be permanently deleted from the system.
               </p>
               <div className="flex items-center justify-center gap-3">
