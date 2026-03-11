@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+/* declare layers */
+@layer base, components, utilities;
+
+
+/* BASE */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    /* @apply bg-white text-ink-900 font-sans antialiased; */
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(0,0,0,0.04) 1px, transparent 0);
+    background-size: 24px 24px;
+  }
+
+  h1, h2, h3, h4 {
+    /* @apply font-display; */
+  }
+}
+
+
+/* COMPONENTS */
+@layer components {
+
+  .btn-primary {
+    /* @apply bg-black text-white px-4 py-2.5 font-display font-600 text-sm border-2 border-black shadow-hard-sm transition-all duration-150 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard active:translate-x-0 active:translate-y-0 active:shadow-none; */
+  }
+
+  .btn-secondary {
+    /* @apply bg-white text-black px-4 py-2.5 font-display font-600 text-sm border-2 border-black shadow-hard-sm transition-all duration-150 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-hard active:translate-x-0 active:translate-y-0 active:shadow-none; */
+  }
+
+}
+
+
+/* UTILITIES */
+@layer utilities {
+
+  .font-600 { font-weight: 600; }
+  .font-500 { font-weight: 500; }
+  .font-700 { font-weight: 700; }
+
+}
