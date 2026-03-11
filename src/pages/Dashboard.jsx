@@ -8,10 +8,10 @@ import { getPendingCount } from '../services/offlineSync';
 const DashCard = ({ title, subtitle, icon, onClick, accent = false, badge }) => (
   <button
     onClick={onClick}
-    className={`text-left rounded-2xl border p-6 transition-all duration-200 group w-full ${
+    className={`text-left rounded-2xl border p-6 transition-all duration-200 group w-full cursor-pointer ${
       accent
-        ? 'bg-gradient-to-br from-gray-900 to-black text-white border-gray-800 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 hover:-translate-y-1'
-        : 'bg-white text-gray-900 border-gray-200 shadow-sm hover:shadow-lg hover:border-gray-300 hover:-translate-y-1'
+        ? 'bg-gradient-to-br from-gray-900 to-black text-white border-gray-900 shadow-lg shadow-black/20 hover:shadow-xl hover:-translate-y-1'
+        : 'bg-white text-gray-900 border-gray-300 shadow-sm hover:shadow-xl hover:border-gray-300 hover:-translate-y-1'
     }`}
   >
     <div className="flex items-start justify-between mb-5">
