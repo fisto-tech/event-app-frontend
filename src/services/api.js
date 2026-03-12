@@ -73,4 +73,28 @@ export const employeeApi = {
   delete: (id) => api.delete(`/employees/${id}`),
 };
 
+// followup API
+export const followupApi = {
+  // GET /followups?date=YYYY-MM-DD&search=xxx
+  getByDate: (params) =>
+    api.get('/followups', { params }).then((res) => res.data),
+ 
+  // GET /followups/:id/detail
+  getDetail: (id) =>
+    api.get(`/followups/${id}/detail`).then((res) => res.data),
+ 
+  // GET /followups/:id/history
+  getHistory: (id) =>
+    api.get(`/followups/${id}/history`).then((res) => res.data),
+ 
+  // POST /followups/:customerId/log
+  createLog: (customerId, data) =>
+    api.post(`/followups/${customerId}/log`, data).then((res) => res.data),
+ 
+  // GET /followups/admin/missed?search=&stage=&employee_id=
+  getAdminMissed: (params) =>
+    api.get('/followups/admin/missed', { params }).then((res) => res.data),
+};
+ 
+
 export default api;

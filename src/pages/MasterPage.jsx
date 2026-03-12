@@ -4,7 +4,7 @@ import { useToast } from '../components/Toast';
 
 const TABS = [
   { key: 'expos', label: 'Expo Names', icon: '🎪', description: 'Manage exhibition and expo entries' },
-  { key: 'enquiry', label: 'Enquiry Types', icon: '❓', description: 'Define enquiry categories' },
+  { key: 'enquiry', label: 'Enquiry Types', icon: '📋', description: 'Define enquiry categories' },
   { key: 'industry', label: 'Industry Types', icon: '🏭', description: 'Manage industry classifications' },
   { key: 'sms', label: 'SMS Templates', icon: '💬', description: 'Create and manage SMS templates' },
   { key: 'whatsapp', label: 'WhatsApp Templates', icon: '📱', description: 'WhatsApp message templates' },

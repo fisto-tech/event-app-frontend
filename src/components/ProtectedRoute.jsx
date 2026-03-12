@@ -7,7 +7,7 @@ export const ProtectedRoute = ({ children, adminOnly = false }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="h-[100vh] flex items-center justify-center bg-white">
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-black border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm font-mono text-ink-500">Loading...</p>

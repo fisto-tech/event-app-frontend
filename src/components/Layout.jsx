@@ -35,6 +35,34 @@ const NAV_LINKS = [
     ),
   },
   {
+  to: '/followup',
+  label: 'Followup',
+  icon: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        strokeWidth={1.5} 
+        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
+      />
+    </svg>
+  ),
+},
+  {
+  to: '/admin/followup',
+  label: 'Missed Followup',
+  icon: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        strokeWidth={1.5} 
+        d="M12 9v3m0 4h.01M10.29 3.86l-7.4 12.83A1 1 0 003.8 18h16.4a1 1 0 00.91-1.31l-7.4-12.83a1 1 0 00-1.82 0z" 
+      />
+    </svg>
+  ),
+},
+  {
     to: '/reports',
     label: 'Reports',
     icon: (

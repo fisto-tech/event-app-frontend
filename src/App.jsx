@@ -11,9 +11,12 @@ const CustomerRegistration = lazy(() => import('./pages/CustomerRegistration'));
 const Reports = lazy(() => import('./pages/Reports'));
 const MasterPage = lazy(() => import('./pages/MasterPage'));
 const EmployeePage = lazy(() => import('./pages/EmployeePage'));
+const FollowupMainPage = lazy(() => import('./pages/FollowupMainPage'));
+const FollowupPage = lazy(() => import('./pages/FollowupPage'));
+const AdminFollowupPage = lazy(() => import('./pages/AdminFollowupPage'));
 
 const PageLoader = () => (
-  <div className="flex items-center justify-center min-h-[60vh]">
+  <div className="flex items-center justify-center min-h-screen">
     <div className="text-center">
       <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin mx-auto mb-3" />
       <p className="text-xs font-mono text-ink-400">Loading...</p>
@@ -57,8 +60,21 @@ export default function App() {
                     </ProtectedRoute>
                   }
                 />
+
+              <Route path="followup"     element={<FollowupMainPage />} />
+              <Route path="followup/:id" element={<FollowupPage />} />
+                <Route
+                path="admin/followup"
+                element={
+                  <ProtectedRoute adminOnly>
+                    <AdminFollowupPage />
+                  </ProtectedRoute>
+                }
+              />
               </Route>
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            
+
             </Routes>
           </Suspense>
         </ToastProvider>
