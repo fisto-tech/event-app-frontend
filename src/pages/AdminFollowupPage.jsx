@@ -533,7 +533,7 @@ export default function AdminFollowupPage() {
           <p className="text-sm text-gray-500 mt-2 ">All follow-ups are on track. Great work!</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-6 max-h-[80vh] overflow-y-auto">
+        <div className="flex flex-col gap-6 ">
           {BRACKETS.map((bracket) => {
             const rows = getRows(bracket);
             if (rows.length === 0) return null;
