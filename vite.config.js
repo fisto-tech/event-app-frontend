@@ -12,9 +12,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Expo CRM',
-        short_name: 'ExpoCRM',
-        description: 'Expo Customer Registration & Management',
+        name: 'Fisto EVENT APP',
+        short_name: 'EVENT_APP',
+        description: 'EVENT Customer Registration & Management',
         theme_color: '#000000',
         background_color: '#ffffff',
         display: 'standalone',

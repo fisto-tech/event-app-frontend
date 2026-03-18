@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../components/Toast';
 import logoImage from '../assets/images/logo.png';
+import { subscribeUser } from "../utils/pushNotifications";
+
 
 export default function Login() {
   const [form, setForm] = useState({ username: '', password: '' });
@@ -99,7 +101,12 @@ export default function Login() {
       </div>
 
       {/* Right panel - Login Form */}
-      <div className="flex-1 flex items-center justify-center p-5 sm:p-8 lg:p-12">
+      <div className="flex-1 flex items-center justify-center p-5 sm:p-8 lg:p-12 relative">
+        <button className='bg-red-600 text-white px-3 py-2 rounded-xl cursor-pointer absolute top-[3%] right-[3%] '
+        onClick={subscribeUser}
+        >
+          Notification
+        </button>
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center justify-center gap-3 mb-10">

@@ -31,11 +31,17 @@ export const authApi = {
   login: (data) => api.post('/auth/login', data),
 };
 
+
 export const masterApi = {
+  // ✅ EXISTING METHODS (keep these as they are)
   getExpos: () => api.get('/master/expos'),
   createExpo: (data) => api.post('/master/expos', data),
   updateExpo: (id, data) => api.put(`/master/expos/${id}`, data),
   deleteExpo: (id) => api.delete(`/master/expos/${id}`),
+
+  // Current Expo (global, DB-backed — affects all users)
+  getCurrentExpo: () => api.get('/master/current-expo'),
+  setCurrentExpo: (id) => api.put('/master/current-expo', { id }),
 
   getEnquiryTypes: () => api.get('/master/enquiry-types'),
   createEnquiryType: (data) => api.post('/master/enquiry-types', data),
@@ -56,7 +62,76 @@ export const masterApi = {
   getEmailTemplates: () => api.get('/master/email-templates'),
   createEmailTemplate: (data) => api.post('/master/email-templates', data),
   deleteEmailTemplate: (id) => api.delete(`/master/email-templates/${id}`),
+
+  // ✅ NEW METHODS (add these below)
+  
+  // Sources Management
+  getSources: () => api.get('/master/sources'),
+  addSource: (data) => api.post('/master/sources', data),
+
+  // Industry Types - Context Aware
+  getIndustryTypesForContext: (expoId, enquiryTypeId) => {
+    const params = {};
+    if (expoId) params.expo_id = expoId;
+    if (enquiryTypeId) params.enquiry_type_id = enquiryTypeId;
+    return api.get('/master/industry-types/context', { params });
+  },
+  createCustomIndustryType: (data) => api.post('/master/industry-types/custom', data),
+
+  // SMS Templates - Context Aware
+  getSmsTemplatesForContext: (expoId, enquiryTypeId) => {
+    const params = {};
+    if (expoId) params.expo_id = expoId;
+    if (enquiryTypeId) params.enquiry_type_id = enquiryTypeId;
+    return api.get('/master/sms-templates/context', { params });
+  },
+  createCustomSmsTemplate: (data) => api.post('/master/sms-templates/custom', data),
+
+  // WhatsApp Templates - Context Aware
+  getWhatsappTemplatesForContext: (expoId, enquiryTypeId) => {
+    const params = {};
+    if (expoId) params.expo_id = expoId;
+    if (enquiryTypeId) params.enquiry_type_id = enquiryTypeId;
+    return api.get('/master/whatsapp-templates/context', { params });
+  },
+  createCustomWhatsappTemplate: (data) => api.post('/master/whatsapp-templates/custom', data),
+
+  // Email Templates - Context Aware
+  getEmailTemplatesForContext: (expoId, enquiryTypeId) => {
+    const params = {};
+    if (expoId) params.expo_id = expoId;
+    if (enquiryTypeId) params.enquiry_type_id = enquiryTypeId;
+    return api.get('/master/email-templates/context', { params });
+  },
+  createCustomEmailTemplate: (data) => api.post('/master/email-templates/custom', data),
 };
+
+// export const masterApi = {
+//   getExpos: () => api.get('/master/expos'),
+//   createExpo: (data) => api.post('/master/expos', data),
+//   updateExpo: (id, data) => api.put(`/master/expos/${id}`, data),
+//   deleteExpo: (id) => api.delete(`/master/expos/${id}`),
+
+//   getEnquiryTypes: () => api.get('/master/enquiry-types'),
+//   createEnquiryType: (data) => api.post('/master/enquiry-types', data),
+//   deleteEnquiryType: (id) => api.delete(`/master/enquiry-types/${id}`),
+
+//   getIndustryTypes: () => api.get('/master/industry-types'),
+//   createIndustryType: (data) => api.post('/master/industry-types', data),
+//   deleteIndustryType: (id) => api.delete(`/master/industry-types/${id}`),
+
+//   getSmsTemplates: () => api.get('/master/sms-templates'),
+//   createSmsTemplate: (data) => api.post('/master/sms-templates', data),
+//   deleteSmsTemplate: (id) => api.delete(`/master/sms-templates/${id}`),
+
+//   getWhatsappTemplates: () => api.get('/master/whatsapp-templates'),
+//   createWhatsappTemplate: (data) => api.post('/master/whatsapp-templates', data),
+//   deleteWhatsappTemplate: (id) => api.delete(`/master/whatsapp-templates/${id}`),
+
+//   getEmailTemplates: () => api.get('/master/email-templates'),
+//   createEmailTemplate: (data) => api.post('/master/email-templates', data),
+//   deleteEmailTemplate: (id) => api.delete(`/master/email-templates/${id}`),
+// };
 
 export const customerApi = {
   getAll: (params) => api.get('/customers', { params }),

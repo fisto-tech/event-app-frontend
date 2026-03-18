@@ -6,15 +6,44 @@ import { cacheMasterData, getCachedMasterData, saveOfflineCustomer } from '../se
 import { useToast } from '../components/Toast';
 import * as XLSX from 'xlsx';
 
+// ─── Selected Expo helper (localStorage = offline cache; DB = source of truth) ─
+const SELECTED_EXPO_KEY = 'selectedExpo';
+function getSelectedExpo() {
+  try { return JSON.parse(localStorage.getItem(SELECTED_EXPO_KEY)) || null; } catch { return null; }
+}
+function cacheSelectedExpo(expo) {
+  if (expo) localStorage.setItem(SELECTED_EXPO_KEY, JSON.stringify(expo));
+  else localStorage.removeItem(SELECTED_EXPO_KEY);
+}
+
 const FALLBACK_ENQUIRY = ['Website', 'Web App', 'Android App', 'Customised Software', 'ERP', 'CRM', 'Other'];
 const FALLBACK_INDUSTRY = ['Agriculture', 'Adhesives', 'Packaging', 'Manufacturing', 'Education', 'Retail', 'IT', 'Healthcare', 'Other'];
 
-const EMPTY_FORM = {
-  expo_id: '', expo_name: '', company_name: '', customer_name: '',
-  designation: '', phone_number: '', enquiry_type: '', email: '',
-  location: '', city: '', industry_type: '', followup_date: '', remarks: '',
-  sms_sent: false, wa_sent: false,
-};
+function makeEmptyForm() {
+  const sel = getSelectedExpo();
+  return {
+    expo_id: sel ? String(sel.id) : '',
+    expo_name: sel ? sel.expo_name : '',
+    company_name: '',
+    customer_name: '',
+    designation: '',
+    phone_number: '',
+    mobile_no_2: '',
+    enquiry_type: '',
+    email: '',
+    email_2: '',
+    website: '',
+    location: '',
+    city: '',
+    industry_type: '',
+    followup_date: '',
+    remarks: '',
+    sms_sent: false,
+    wa_sent: false,
+  };
+}
+
+const EMPTY_FORM = makeEmptyForm();
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -71,7 +100,139 @@ function SelectChevron() {
   );
 }
 
-// ─── Autocomplete — uses a portal-like fixed dropdown to avoid overflow:hidden clipping ──
+// ─── ExpoDropdown — 2 options only: current expo + Others ────────────────────
+
+function ExpoDropdown({ name, value, onChange, sources, onAddSource, hasError, currentExpo }) {
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [customInput, setCustomInput] = useState('');
+  const [filteredSuggestions, setFilteredSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // If the saved value is a custom source (not the current expo id), show input mode
+  useEffect(() => {
+    if (value && currentExpo && String(value) !== String(currentExpo.id)) {
+      setShowCustomInput(true);
+      setCustomInput(value);
+    } else if (value && !currentExpo) {
+      // No current expo set — any non-empty value must be a custom source
+      setShowCustomInput(true);
+      setCustomInput(value);
+    }
+  }, [value, currentExpo]);
+
+  const handleCustomInputChange = (e) => {
+    const input = e.target.value;
+    setCustomInput(input);
+    onChange({ target: { name, value: input } });
+    if (input.trim()) {
+      const matches = sources.filter((s) => s.source_name.toLowerCase().includes(input.toLowerCase()));
+      setFilteredSuggestions(matches);
+      setShowSuggestions(true);
+    } else {
+      setFilteredSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSuggestionClick = (sourceName) => {
+    setCustomInput(sourceName);
+    onChange({ target: { name, value: sourceName } });
+    setShowSuggestions(false);
+  };
+
+  const handleAddCustomSource = async () => {
+    if (customInput.trim()) {
+      await onAddSource(customInput.trim());
+      setShowSuggestions(false);
+    }
+  };
+
+  // ── Custom / Others input mode ────────────────────────────────────────────
+  if (showCustomInput) {
+    return (
+      <div className="relative">
+        <input
+          type="text"
+          placeholder="Enter custom source name..."
+          value={customInput}
+          onChange={handleCustomInputChange}
+          onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+          onFocus={() => customInput && setShowSuggestions(true)}
+          className={getInputClasses(hasError)}
+        />
+        {showSuggestions && (
+          <div className="absolute top-full mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+            {filteredSuggestions.length > 0 ? (
+              <>
+                {filteredSuggestions.map((source) => (
+                  <button key={source.id} type="button"
+                    onClick={() => handleSuggestionClick(source.source_name)}
+                    className="w-full text-left px-4 py-2.5 hover:bg-blue-50 border-b border-gray-100 last:border-b-0 text-sm text-gray-800"
+                  >
+                    {source.source_name}
+                  </button>
+                ))}
+                <button type="button" onClick={handleAddCustomSource}
+                  className="w-full text-left px-4 py-2.5 bg-blue-50 text-blue-600 font-medium text-sm hover:bg-blue-100"
+                >
+                  + Add "{customInput}" as new source
+                </button>
+              </>
+            ) : (
+              <button type="button" onClick={handleAddCustomSource}
+                className="w-full text-left px-4 py-2.5 bg-blue-50 text-blue-600 font-medium text-sm hover:bg-blue-100"
+              >
+                + Add "{customInput}" as new source
+              </button>
+            )}
+          </div>
+        )}
+        <button type="button"
+          onClick={() => {
+            setShowCustomInput(false);
+            setCustomInput('');
+            // Revert to current expo if one exists
+            if (currentExpo) {
+              onChange({ target: { name, value: String(currentExpo.id) } });
+            } else {
+              onChange({ target: { name, value: '' } });
+            }
+          }}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+        >✕</button>
+      </div>
+    );
+  }
+
+  // ── Normal dropdown mode: only current expo + Others ─────────────────────
+  return (
+    <div className="relative">
+      <select
+        value={currentExpo ? String(currentExpo.id) : ''}
+        onChange={(e) => {
+          if (e.target.value === 'others') {
+            setShowCustomInput(true);
+            setCustomInput('');
+            onChange({ target: { name, value: '' } });
+          } else if (e.target.value && currentExpo) {
+            onChange({ target: { name, value: String(currentExpo.id) } });
+          }
+        }}
+        className={getSelectClasses(hasError)}
+      >
+        {currentExpo ? (
+          <option value={String(currentExpo.id)}>{currentExpo.expo_name}</option>
+        ) : (
+          <option value="">No expo selected — choose Others</option>
+        )}
+        <option value="others">—— Others (Custom Source) ——</option>
+      </select>
+      <SelectChevron />
+    </div>
+  );
+}
+
+// ─── Autocomplete Input ────────────────────────────────────────────────────────
 
 function AutocompleteInput({ name, value, onChange, suggestions, placeholder, hasError }) {
   const [open, setOpen] = useState(false);
@@ -86,7 +247,6 @@ function AutocompleteInput({ name, value, onChange, suggestions, placeholder, ha
     : suggestions;
   const showDropdown = open && filtered.length > 0;
 
-  // Compute dropdown position relative to viewport so it escapes overflow:hidden parents
   const updateDropdownPos = useCallback(() => {
     if (!inputRef.current) return;
     const rect = inputRef.current.getBoundingClientRect();
@@ -111,10 +271,13 @@ function AutocompleteInput({ name, value, onChange, suggestions, placeholder, ha
   useEffect(() => {
     const handler = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setOpen(false); setHighlighted(-1);
+        setOpen(false);
+        setHighlighted(-1);
       }
     };
-    const scroll = () => { if (showDropdown) updateDropdownPos(); };
+    const scroll = () => {
+      if (showDropdown) updateDropdownPos();
+    };
     document.addEventListener('mousedown', handler);
     window.addEventListener('scroll', scroll, true);
     window.addEventListener('resize', scroll);
@@ -132,21 +295,41 @@ function AutocompleteInput({ name, value, onChange, suggestions, placeholder, ha
 
   const selectOption = (option) => {
     onChange({ target: { name, value: option } });
-    setOpen(false); setHighlighted(-1);
+    setOpen(false);
+    setHighlighted(-1);
   };
 
   const handleKeyDown = (e) => {
     if (!showDropdown) {
-      if (e.key === 'ArrowDown') { setOpen(true); setHighlighted(0); e.preventDefault(); }
+      if (e.key === 'ArrowDown') {
+        setOpen(true);
+        setHighlighted(0);
+        e.preventDefault();
+      }
       return;
     }
     switch (e.key) {
-      case 'ArrowDown': e.preventDefault(); setHighlighted((h) => Math.min(h + 1, filtered.length - 1)); break;
-      case 'ArrowUp':   e.preventDefault(); setHighlighted((h) => Math.max(h - 1, 0)); break;
-      case 'Enter':     e.preventDefault(); if (highlighted >= 0 && filtered[highlighted]) selectOption(filtered[highlighted]); else setOpen(false); break;
-      case 'Escape':    setOpen(false); setHighlighted(-1); break;
-      case 'Tab':       if (highlighted >= 0 && filtered[highlighted]) selectOption(filtered[highlighted]); setOpen(false); break;
-      default: break;
+      case 'ArrowDown':
+        setHighlighted((prev) => (prev < filtered.length - 1 ? prev + 1 : prev));
+        e.preventDefault();
+        break;
+      case 'ArrowUp':
+        setHighlighted((prev) => (prev > 0 ? prev - 1 : -1));
+        e.preventDefault();
+        break;
+      case 'Enter':
+        if (highlighted >= 0) {
+          selectOption(filtered[highlighted]);
+          e.preventDefault();
+        }
+        break;
+      case 'Escape':
+        setOpen(false);
+        setHighlighted(-1);
+        e.preventDefault();
+        break;
+      default:
+        break;
     }
   };
 
@@ -157,40 +340,36 @@ function AutocompleteInput({ name, value, onChange, suggestions, placeholder, ha
         type="text"
         name={name}
         value={value}
-        onChange={(e) => { onChange(e); setOpen(true); setHighlighted(-1); }}
-        onFocus={() => { setOpen(true); updateDropdownPos(); }}
+        onChange={(e) => {
+          onChange(e);
+          setOpen(true);
+          setHighlighted(-1);
+        }}
         onKeyDown={handleKeyDown}
+        onFocus={() => setOpen(true)}
         placeholder={placeholder}
-        autoComplete="off"
         className={getInputClasses(hasError)}
       />
       {showDropdown && (
-        <ul
+        <div
           ref={listRef}
           style={dropdownStyle}
-          className="bg-white border border-gray-200 rounded-xl shadow-2xl max-h-56 overflow-y-auto py-1"
-          role="listbox"
+          className="bg-white border border-gray-300 rounded-lg shadow-lg max-h-56 overflow-y-auto"
         >
-          {filtered.map((option, idx) => {
-            const mi = value.trim() ? option.toLowerCase().indexOf(value.toLowerCase()) : -1;
-            return (
-              <li
-                key={option}
-                role="option"
-                aria-selected={idx === highlighted}
-                onMouseDown={(e) => { e.preventDefault(); selectOption(option); }}
-                onMouseEnter={() => setHighlighted(idx)}
-                className={`px-4 py-2.5 text-sm cursor-pointer select-none transition-colors ${
-                  idx === highlighted ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                {mi >= 0 ? (
-                  <>{option.slice(0, mi)}<span className={`font-semibold ${idx === highlighted ? 'text-white' : 'text-blue-600'}`}>{option.slice(mi, mi + value.length)}</span>{option.slice(mi + value.length)}</>
-                ) : option}
-              </li>
-            );
-          })}
-        </ul>
+          {filtered.map((option, idx) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => selectOption(option)}
+              onMouseEnter={() => setHighlighted(idx)}
+              className={`block w-full text-left px-4 py-3 text-sm transition-colors ${
+                idx === highlighted ? 'bg-blue-100 text-blue-900' : 'text-gray-800 hover:bg-gray-100'
+              } border-b border-gray-100 last:border-b-0`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -200,447 +379,318 @@ function AutocompleteInput({ name, value, onChange, suggestions, placeholder, ha
 
 function MessagingCheckbox({ id, checked, onChange, label, sublabel, icon }) {
   return (
-    <label
-      htmlFor={id}
-      className={`flex items-center gap-3 p-4 rounded-xl border-1 cursor-pointer transition-all duration-150 select-none ${
-        checked ? 'bg-blue-50 border-blue-500 shadow-sm' : 'bg-white border-gray-400 hover:border-gray-500 hover:bg-gray-50'
-      }`}
-    >
-      <div className="relative flex-shrink-0">
-        <input id={id} name={id} type="checkbox" checked={checked} onChange={onChange} className="sr-only" />
-        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-150 ${
-          checked ? 'bg-blue-600 border-blue-600' : 'border-gray-300 bg-white'
-        }`}>
-          {checked && (
-            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          )}
+    <label className="cursor-pointer">
+      <div className="p-4 rounded-lg border-2 border-gray-200 bg-white transition-all hover:border-blue-300 hover:bg-blue-50/30" style={checked ? { borderColor: '#3B82F6', backgroundColor: '#F0F9FF' } : {}}>
+        <div className="flex items-start gap-3">
+          <input type="checkbox" id={id} checked={checked} onChange={(e) => onChange({ target: { name: id, checked: e.target.checked } })} className="w-5 h-5 rounded border-gray-300 text-blue-600 cursor-pointer accent-blue-600 mt-0.5" />
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{icon}</span>
+              <h4 className="text-sm font-semibold text-gray-800">{label}</h4>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">{sublabel}</p>
+          </div>
         </div>
       </div>
-      <div className="flex items-center gap-2 flex-1">
-        <span className={`text-lg ${checked ? 'opacity-100' : 'opacity-50'}`}>{icon}</span>
-        <div>
-          <p className={`text-sm font-semibold ${checked ? 'text-blue-800' : 'text-gray-700'}`}>{label}</p>
-          <p className="text-xs text-gray-400">{sublabel}</p>
-        </div>
-      </div>
-     
     </label>
   );
 }
 
 // ─── Excel Upload Modal ────────────────────────────────────────────────────────
 
-const EXCEL_COL_MAP = {
-  'expo name':       'expo_name',
-  'company name':    'company_name',
-  'customer name':   'customer_name',
-  'designation':     'designation',
-  'phone':           'phone_number',
-  'phone number':    'phone_number',
-  'mobile':          'phone_number',
-  'enquiry type':    'enquiry_type',
-  'enquiry':         'enquiry_type',
-  'email':           'email',
-  'email id':        'email',
-  'location':        'location',
-  'city':            'city',
-  'industry':        'industry_type',
-  'industry type':   'industry_type',
-  'follow-up date':  'followup_date',
-  'followup date':   'followup_date',
-  'next follow-up':  'followup_date',
-  'remarks':         'remarks',
-  'notes':           'remarks',
-};
+const EXCEL_COLUMNS = [
+  { header: 'Company Name *',           field: 'company_name',   required: true  },
+  { header: 'Customer Name *',          field: 'customer_name',  required: true  },
+  { header: 'Phone Number 1 *',         field: 'phone_number',   required: true  },
+  { header: 'Phone Number 2',           field: 'mobile_no_2',    required: false },
+  { header: 'Designation',             field: 'designation',    required: false },
+  { header: 'Email 1',                 field: 'email',          required: false },
+  { header: 'Email 2',                 field: 'email_2',        required: false },
+  { header: 'Website',                 field: 'website',        required: false },
+  { header: 'Enquiry Type',            field: 'enquiry_type',   required: false },
+  { header: 'Industry Type',           field: 'industry_type',  required: false },
+  { header: 'Location',                field: 'location',       required: false },
+  { header: 'City',                    field: 'city',           required: false },
+  { header: 'Followup Date (YYYY-MM-DD)', field: 'followup_date', required: false },
+  { header: 'Remarks',                 field: 'remarks',        required: false },
+];
 
-function ExcelUploadModal({ onClose, expos, onImportDone }) {
-  const [stage, setStage] = useState('idle'); // idle | preview | uploading | done
-  const [rows, setRows] = useState([]);
-  const [errors, setErrors] = useState([]);
-  const [duplicates, setDuplicates] = useState([]);
-  const [progress, setProgress] = useState(0);
-  const [inserted, setInserted] = useState(0);
-  const [skipped, setSkipped] = useState(0);
-  const [fileName, setFileName] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
+function downloadTemplate() {
+  const headers = EXCEL_COLUMNS.map(c => c.header);
+  const sample  = [
+    'ABC Pvt Ltd', 'John Doe', '9876543210', '9876543211',
+    'Manager', 'john@abc.com', '', 'www.abc.com',
+    'Website', 'IT', 'Chennai', 'Chennai', '2026-04-01', 'Follow up next week',
+  ];
+  const ws = XLSX.utils.aoa_to_sheet([headers, sample]);
+  ws['!cols'] = headers.map(() => ({ wch: 24 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Customers');
+  XLSX.writeFile(wb, 'customer_import_template.xlsx');
+}
+
+function ExcelUploadModal({ onClose, currentExpo, onImportDone }) {
+  const [preview, setPreview] = useState(null);   // { validRows, errorRows }
+  const [parsing, setParsing]   = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [progress, setProgress] = useState({ done: 0, total: 0, failed: [] });
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef(null);
   const { addToast } = useToast();
-  const { user } = useAuth();
-  const fileRef = useRef();
 
-  const normalizeKey = (k) => String(k).toLowerCase().trim();
+  const parseFile = async (file) => {
+    const buf = await file.arrayBuffer();
+    const wb  = XLSX.read(buf, { type: 'array' });
+    const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+    const validRows = [], errorRows = [];
+    raw.forEach((row, i) => {
+      const mapped = {}, rowErrors = [];
+      EXCEL_COLUMNS.forEach(col => {
+        const val = (row[col.header] || '').toString().trim();
+        mapped[col.field] = val || null;
+        if (col.required && !val) rowErrors.push(`"${col.header}" required`);
+      });
+      if (currentExpo) { mapped.expo_id = currentExpo.id; mapped.expo_name = currentExpo.expo_name; }
+      if (rowErrors.length) errorRows.push({ row: i + 2, errors: rowErrors });
+      else validRows.push(mapped);
+    });
+    return { validRows, errorRows };
+  };
 
-  const parseFile = (file) => {
-    setFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const wb = XLSX.read(e.target.result, { type: 'binary', cellDates: true });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
-
-        if (!raw.length) { addToast('File is empty', 'error'); return; }
-
-        // Map columns
-        const mapped = raw.map((row) => {
-          const out = {};
-          Object.entries(row).forEach(([k, v]) => {
-            const mapped_key = EXCEL_COL_MAP[normalizeKey(k)];
-            if (mapped_key) out[mapped_key] = String(v ?? '').trim();
-          });
-          return out;
-        }).filter((r) => r.company_name || r.customer_name || r.phone_number);
-
-        if (!mapped.length) { addToast('No valid rows found. Check column names.', 'error'); return; }
-
-        // Find internal duplicates (same phone_number within the file)
-        const seen = new Map();
-        const dupes = [];
-        const clean = [];
-        mapped.forEach((row, i) => {
-          const key = row.phone_number;
-          if (key && seen.has(key)) {
-            dupes.push({ ...row, _row: i + 2, _reason: `Duplicate of row ${seen.get(key)}` });
-          } else {
-            if (key) seen.set(key, i + 2);
-            clean.push({ ...row, _row: i + 2 });
-          }
-        });
-
-        setRows(clean);
-        setDuplicates(dupes);
-        setErrors([]);
-        setStage('preview');
-      } catch (err) {
-        addToast('Failed to parse file: ' + err.message, 'error');
+  const handleFile = async (file) => {
+    if (!file) return;
+    setParsing(true);
+    try {
+      const result = await parseFile(file);
+      if (!result.validRows.length && !result.errorRows.length) {
+        addToast('No data found in file', 'error'); return;
       }
-    };
-    reader.readAsBinaryString(file);
+      setPreview(result);
+    } catch (err) {
+      addToast('Error reading file — check format', 'error');
+      console.error(err);
+    } finally { setParsing(false); }
   };
 
-  const handleFilePick = (e) => {
-    const file = e.target.files[0];
-    if (file) parseFile(file);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault(); setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) parseFile(file);
+  // Drag & drop handlers
+  const onDragOver  = (e) => { e.preventDefault(); setDragOver(true); };
+  const onDragLeave = ()  => setDragOver(false);
+  const onDrop      = (e) => {
+    e.preventDefault(); setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
   };
 
   const handleImport = async () => {
-    setStage('uploading');
-    setProgress(0);
-    const errs = [];
-    let ins = 0;
-    let skip = 0;
-
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      // Simulate progress per row
-      const pct = Math.round(((i + 1) / rows.length) * 100);
-      await new Promise((r) => setTimeout(r, 60)); // fake per-row delay for progress UX
-      setProgress(pct);
-
-      try {
-        const payload = {
-          ...row,
-          employee_id: user.id,
-          sms_sent: false,
-          wa_sent: false,
-        };
-        // Find expo_id by expo_name if given
-        if (payload.expo_name && expos.length) {
-          const match = expos.find((ex) => ex.expo_name?.toLowerCase() === payload.expo_name?.toLowerCase());
-          if (match) payload.expo_id = match.id;
-        }
-        await customerApi.create(payload);
-        ins++;
-      } catch (err) {
-        const msg = err.response?.data?.message || 'Failed';
-        errs.push({ ...row, _reason: msg });
-        skip++;
-      }
+    if (!preview?.validRows?.length) return;
+    setImporting(true);
+    setProgress({ done: 0, total: preview.validRows.length, failed: [] });
+    const failed = [];
+    for (let i = 0; i < preview.validRows.length; i++) {
+      try { await customerApi.create(preview.validRows[i]); }
+      catch (err) { failed.push({ row: i + 2, error: err.response?.data?.message || 'Failed' }); }
+      setProgress(p => ({ ...p, done: i + 1, failed }));
     }
-
-    setInserted(ins);
-    setSkipped(skip);
-    setErrors(errs);
-    setStage('done');
-    if (ins > 0) onImportDone();
+    const ok = preview.validRows.length - failed.length;
+    if (ok)     addToast(`${ok} customer(s) imported`, 'success');
+    if (failed.length) addToast(`${failed.length} row(s) failed`, 'error');
+    setImporting(false);
+    onImportDone?.();
+    if (!failed.length) onClose();
   };
 
+  // Preview table columns (subset for display)
+  const PREVIEW_COLS = [
+    { field: 'company_name',  label: 'Company'   },
+    { field: 'customer_name', label: 'Name'       },
+    { field: 'phone_number',  label: 'Phone'      },
+    { field: 'enquiry_type',  label: 'Enquiry'    },
+    { field: 'industry_type', label: 'Industry'   },
+    { field: 'city',          label: 'City'       },
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div
-        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col">
+
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center">
-              <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-gray-900">Import from Excel / CSV</h3>
-              <p className="text-xs text-gray-400">Upload .xlsx, .xls or .csv files</p>
-            </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Import Customers from Excel</h3>
+            {currentExpo && (
+              <p className="text-xs text-blue-600 mt-0.5">
+                Expo <strong>{currentExpo.expo_name}</strong> will be auto-assigned to all imported rows
+              </p>
+            )}
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-all">
+            <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {/* IDLE — drop zone */}
-          {stage === 'idle' && (
-            <div className="p-6 space-y-5">
-              <div
-                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={handleDrop}
-                onClick={() => fileRef.current.click()}
-                className={`border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 ${
-                  isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50/40'
-                }`}
-              >
-                <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4">
-                  <svg className="w-7 h-7 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <p className="text-sm font-semibold text-gray-700 mb-1">Drop your file here or click to browse</p>
-                <p className="text-xs text-gray-400">Supports .xlsx, .xls, .csv</p>
-                <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFilePick} className="hidden" />
-              </div>
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
-              {/* Column reference */}
-              <div className="bg-gray-50 rounded-xl p-4">
-                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Expected Column Names</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {['Company Name', 'Customer Name', 'Phone Number', 'Email', 'City', 'Location', 'Enquiry Type', 'Industry Type', 'Expo Name', 'Designation', 'Follow-up Date', 'Remarks'].map((c) => (
-                    <span key={c} className="text-[10px] font-mono bg-white border border-gray-200 text-gray-600 px-2 py-0.5 rounded-md">{c}</span>
-                  ))}
-                </div>
-              </div>
+          {/* Template download banner */}
+          <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg flex-wrap gap-3">
+            <div>
+              <p className="text-sm font-semibold text-blue-800">Need the template?</p>
+              <p className="text-xs text-blue-600 mt-0.5">Download, fill in your data, then upload below.</p>
             </div>
-          )}
+            <button onClick={downloadTemplate}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-all flex-shrink-0">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Download Template
+            </button>
+          </div>
 
-          {/* PREVIEW */}
-          {stage === 'preview' && (
-            <div className="p-6 space-y-4">
-              {/* Summary chips */}
-              <div className="flex flex-wrap gap-3">
-                <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5">
-                  <span className="text-xl font-bold text-blue-700">{rows.length}</span>
-                  <span className="text-xs text-blue-600 font-medium">Ready to import</span>
-                </div>
-                {duplicates.length > 0 && (
-                  <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
-                    <span className="text-xl font-bold text-amber-700">{duplicates.length}</span>
-                    <span className="text-xs text-amber-600 font-medium">Duplicates skipped</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          {/* Upload zone — only when no preview */}
+          {!preview && (
+            <div
+              onClick={() => !parsing && fileInputRef.current?.click()}
+              onDragOver={onDragOver}
+              onDragLeave={onDragLeave}
+              onDrop={onDrop}
+              className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all select-none ${
+                dragOver  ? 'border-blue-500 bg-blue-50 scale-[1.01]' :
+                parsing   ? 'border-blue-300 bg-blue-50/50 cursor-wait' :
+                'border-gray-300 hover:border-blue-400 hover:bg-blue-50/30'
+              }`}
+            >
+              {parsing ? (
+                <div className="flex flex-col items-center gap-3">
+                  <svg className="w-10 h-10 text-blue-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  <span className="text-xs text-gray-500 font-medium">{fileName}</span>
+                  <p className="text-sm text-blue-600 font-medium">Reading file...</p>
                 </div>
-              </div>
-
-              {/* Preview table */}
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200">
-                  <p className="text-xs font-semibold text-gray-600">Preview (first 5 rows)</p>
-                </div>
-                <div className="overflow-x-auto max-h-48">
-                  <table className="w-full text-xs min-w-[600px]">
-                    <thead className="bg-gray-100">
-                      <tr>
-                        {['Row', 'Company', 'Customer', 'Phone', 'City', 'Enquiry', 'Industry'].map((h) => (
-                          <th key={h} className="px-3 py-2 text-left font-semibold text-gray-600 uppercase tracking-wide text-[10px]">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.slice(0, 5).map((r) => (
-                        <tr key={r._row} className="border-t border-gray-100 hover:bg-gray-50">
-                          <td className="px-3 py-2 text-gray-400 font-mono">{r._row}</td>
-                          <td className="px-3 py-2 text-gray-800 font-medium max-w-[120px] truncate">{r.company_name || '—'}</td>
-                          <td className="px-3 py-2 text-gray-700 max-w-[120px] truncate">{r.customer_name || '—'}</td>
-                          <td className="px-3 py-2 text-gray-700 font-mono">{r.phone_number || '—'}</td>
-                          <td className="px-3 py-2 text-gray-700">{r.city || '—'}</td>
-                          <td className="px-3 py-2 text-gray-700">{r.enquiry_type || '—'}</td>
-                          <td className="px-3 py-2 text-gray-700">{r.industry_type || '—'}</td>
-                        </tr>
-                      ))}
-                      {rows.length > 5 && (
-                        <tr className="border-t border-gray-100 bg-gray-50">
-                          <td colSpan={7} className="px-3 py-2 text-center text-gray-400 text-[11px]">
-                            + {rows.length - 5} more rows...
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Duplicates list */}
-              {duplicates.length > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                  <p className="text-xs font-semibold text-amber-700 mb-2 flex items-center gap-1.5">
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    Duplicate entries removed ({duplicates.length})
+              ) : (
+                <>
+                  <svg className={`w-12 h-12 mx-auto mb-3 transition-colors ${dragOver ? 'text-blue-500' : 'text-gray-400'}`}
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <p className="text-sm font-semibold text-gray-800">
+                    {dragOver ? 'Drop your file here' : 'Click to upload or drag & drop'}
                   </p>
-                  <div className="space-y-1 max-h-24 overflow-y-auto">
-                    {duplicates.map((d, i) => (
-                      <div key={i} className="text-[11px] text-amber-700 flex gap-2">
-                        <span className="font-mono text-amber-500">Row {d._row}</span>
-                        <span>{d.company_name || d.customer_name} — {d._reason}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                  <p className="text-xs text-gray-500 mt-1">.xlsx or .xls — use the template above for correct column order</p>
+                </>
               )}
+              <input ref={fileInputRef} type="file" accept=".xlsx,.xls"
+                onChange={(e) => handleFile(e.target.files?.[0])} className="hidden" />
             </div>
           )}
 
-          {/* UPLOADING */}
-          {stage === 'uploading' && (
-            <div className="p-8 flex flex-col items-center justify-center min-h-[300px]">
-              <div className="w-full max-w-sm space-y-6">
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-blue-600 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                  </div>
-                  <p className="text-base font-semibold text-gray-800">Importing records…</p>
-                  <p className="text-sm text-gray-400 mt-1">{Math.round((progress / 100) * rows.length)} of {rows.length} rows processed</p>
+          {/* Preview */}
+          {preview && !importing && (
+            <div className="space-y-4">
+              {/* Summary cards */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-4 bg-green-50 border border-green-200 rounded-xl text-center">
+                  <p className="text-3xl font-bold text-green-700">{preview.validRows.length}</p>
+                  <p className="text-xs text-green-600 mt-1 font-medium">Rows ready to import</p>
                 </div>
-
-                {/* Progress bar */}
-                <div>
-                  <div className="flex justify-between text-xs text-gray-500 mb-1.5">
-                    <span>Progress</span>
-                    <span className="font-semibold text-blue-600">{progress}%</span>
-                  </div>
-                  <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-                    <div
-                      className="h-3 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-300 ease-out"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Steps */}
-                <div className="space-y-2">
-                  {[
-                    { done: progress >= 20, label: 'Validating rows' },
-                    { done: progress >= 50, label: 'Sending to server' },
-                    { done: progress >= 80, label: 'Inserting into database' },
-                    { done: progress >= 100, label: 'Finalizing' },
-                  ].map((step, i) => (
-                    <div key={i} className="flex items-center gap-2.5">
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-                        step.done ? 'bg-emerald-100' : 'bg-gray-100'
-                      }`}>
-                        {step.done
-                          ? <svg className="w-3 h-3 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                          : <div className="w-2 h-2 bg-gray-300 rounded-full" />
-                        }
-                      </div>
-                      <span className={`text-xs ${step.done ? 'text-emerald-700 font-medium' : 'text-gray-400'}`}>{step.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* DONE */}
-          {stage === 'done' && (
-            <div className="p-6 space-y-5">
-              <div className="text-center py-2">
-                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 ${inserted > 0 ? 'bg-emerald-100' : 'bg-gray-100'}`}>
-                  {inserted > 0
-                    ? <svg className="w-8 h-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    : <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                  }
-                </div>
-                <h4 className="text-lg font-bold text-gray-900 mb-1">Import Complete</h4>
-                <p className="text-sm text-gray-500">Here's a summary of what happened</p>
-              </div>
-
-              {/* Result grid */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
-                  <p className="text-3xl font-bold text-emerald-700">{inserted}</p>
-                  <p className="text-xs text-emerald-600 font-medium mt-1">Inserted</p>
-                </div>
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
-                  <p className="text-3xl font-bold text-amber-700">{duplicates.length}</p>
-                  <p className="text-xs text-amber-600 font-medium mt-1">Duplicates</p>
-                </div>
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
-                  <p className="text-3xl font-bold text-red-700">{skipped}</p>
-                  <p className="text-xs text-red-600 font-medium mt-1">Failed</p>
+                <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-center">
+                  <p className="text-3xl font-bold text-red-600">{preview.errorRows.length}</p>
+                  <p className="text-xs text-red-500 mt-1 font-medium">Rows with errors (skipped)</p>
                 </div>
               </div>
 
               {/* Error details */}
-              {errors.length > 0 && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                  <p className="text-xs font-semibold text-red-700 mb-2">Failed rows</p>
-                  <div className="space-y-1.5 max-h-32 overflow-y-auto">
-                    {errors.map((e, i) => (
-                      <div key={i} className="text-[11px] flex items-start gap-2 text-red-700">
-                        <span className="font-mono text-red-400 flex-shrink-0">Row {e._row}</span>
-                        <span>{e.company_name || e.customer_name} — {e._reason}</span>
-                      </div>
+              {preview.errorRows.length > 0 && (
+                <div className="border border-red-200 rounded-xl overflow-hidden">
+                  <div className="px-4 py-2.5 bg-red-50 border-b border-red-100">
+                    <p className="text-xs font-semibold text-red-700">Rows skipped due to errors</p>
+                  </div>
+                  <div className="divide-y divide-red-50 max-h-28 overflow-y-auto">
+                    {preview.errorRows.map((e, i) => (
+                      <p key={i} className="px-4 py-2 text-xs text-red-600">
+                        <strong>Row {e.row}:</strong> {e.errors.join(' · ')}
+                      </p>
                     ))}
                   </div>
                 </div>
+              )}
+
+              {/* Table preview */}
+              {preview.validRows.length > 0 && (
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                    <p className="text-xs font-semibold text-gray-700">
+                      Preview — {preview.validRows.length} row{preview.validRows.length !== 1 ? 's' : ''}
+                    </p>
+                    <p className="text-xs text-gray-400">Showing all {Math.min(preview.validRows.length, 100)} rows</p>
+                  </div>
+                  <div className="overflow-x-auto max-h-60">
+                    <table className="w-full text-xs">
+                      <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-500 uppercase tracking-wider w-8">#</th>
+                          {PREVIEW_COLS.map(c => (
+                            <th key={c.field} className="px-3 py-2 text-left font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{c.label}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {preview.validRows.slice(0, 100).map((row, i) => (
+                          <tr key={i} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 text-gray-400">{i + 1}</td>
+                            {PREVIEW_COLS.map(c => (
+                              <td key={c.field} className="px-3 py-2 text-gray-800 max-w-[160px] truncate" title={row[c.field] || ''}>
+                                {row[c.field] || <span className="text-gray-300">—</span>}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              <button onClick={() => { setPreview(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2">
+                ← Choose a different file
+              </button>
+            </div>
+          )}
+
+          {/* Import progress */}
+          {importing && (
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm font-medium">
+                <span className="text-gray-600">Importing customers...</span>
+                <span className="text-gray-800">{progress.done} / {progress.total}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                <div className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+                  style={{ width: `${(progress.done / progress.total) * 100}%` }} />
+              </div>
+              {progress.failed.length > 0 && (
+                <p className="text-xs text-red-500">{progress.failed.length} row(s) failed so far</p>
               )}
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/60 flex-shrink-0">
-          {stage === 'idle' && (
-            <p className="text-xs text-gray-400">Duplicate phone numbers within the file will be skipped automatically.</p>
-          )}
-          {stage === 'preview' && (
-            <>
-              <button onClick={() => { setStage('idle'); setRows([]); setDuplicates([]); setFileName(''); }}
-                className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all">
-                ← Back
-              </button>
-              <button onClick={handleImport} disabled={rows.length === 0}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-all disabled:opacity-50">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-                Import {rows.length} Rows
-              </button>
-            </>
-          )}
-          {(stage === 'done') && (
-            <button onClick={onClose} className="ml-auto px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-all">
-              Done
+        <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 flex-shrink-0">
+          <button onClick={onClose} disabled={importing}
+            className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm text-gray-700 font-medium hover:bg-gray-50 transition-all disabled:opacity-50">
+            {importing ? 'Please wait...' : 'Cancel'}
+          </button>
+          {preview && !importing && preview.validRows.length > 0 && (
+            <button onClick={handleImport}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-all shadow-sm">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 11l3 3m0 0l3-3m-3 3V4" />
+              </svg>
+              Import {preview.validRows.length} Customer{preview.validRows.length !== 1 ? 's' : ''}
             </button>
           )}
         </div>
@@ -649,194 +699,250 @@ function ExcelUploadModal({ onClose, expos, onImportDone }) {
   );
 }
 
-// ─── Main Component ────────────────────────────────────────────────────────────
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function CustomerRegistration() {
   const { user } = useAuth();
   const isOnline = useNetworkStatus();
   const { addToast } = useToast();
-
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(makeEmptyForm);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [expos, setExpos] = useState([]);
-  const [enquiryTypes, setEnquiryTypes] = useState([]);
-  const [industryTypes, setIndustryTypes] = useState([]);
-  const [submitted, setSubmitted] = useState(false);
+  const [sources, setSources] = useState([]);
+  const [enquiryTypes, setEnquiryTypes] = useState(FALLBACK_ENQUIRY);
+  const [industryTypes, setIndustryTypes] = useState(FALLBACK_INDUSTRY);
+  const [baseIndustryTypes, setBaseIndustryTypes] = useState(FALLBACK_INDUSTRY); // full general list always kept
   const [showUpload, setShowUpload] = useState(false);
+  const [currentExpo, setCurrentExpo] = useState(() => getSelectedExpo());
+  // Track enquiry type ids for context loading
+  const [enquiryTypeObjects, setEnquiryTypeObjects] = useState([]);
 
-  useEffect(() => { loadMasterData(); }, [isOnline]); // eslint-disable-line
-
-  const loadMasterData = async () => {
-    if (isOnline) {
+  // Load master data + current expo from API
+  useEffect(() => {
+    const loadMasterData = async () => {
       try {
-        const [expoRes, enquiryRes, industryRes] = await Promise.all([
-          masterApi.getExpos(), masterApi.getEnquiryTypes(), masterApi.getIndustryTypes(),
+        const cached = getCachedMasterData();
+        if (cached) {
+          setExpos(cached.expos || []);
+          setEnquiryTypes(cached.enquiry_types || FALLBACK_ENQUIRY);
+          setIndustryTypes(cached.industry_types || FALLBACK_INDUSTRY);
+          setBaseIndustryTypes(cached.industry_types || FALLBACK_INDUSTRY);
+        }
+        if (!isOnline) return;
+        const [expoRes, sourcesRes, enquiryRes, industryRes, currentExpoRes] = await Promise.all([
+          masterApi.getExpos(),
+          masterApi.getSources(),
+          masterApi.getEnquiryTypes(),
+          masterApi.getIndustryTypes(),
+          masterApi.getCurrentExpo(),
         ]);
-        const expoData = expoRes.data.data;
-        const enquiryData = enquiryRes.data.data;
-        const industryData = industryRes.data.data;
-        setExpos(expoData);
-        setEnquiryTypes(enquiryData.map((e) => e.name));
-        setIndustryTypes(industryData.map((e) => e.name));
-        await cacheMasterData('expos', expoData);
-        await cacheMasterData('enquiry_types', enquiryData.map((e) => e.name));
-        await cacheMasterData('industry_types', industryData.map((e) => e.name));
-      } catch { await loadFromCache(); }
-    } else { await loadFromCache(); }
-  };
+        const data = {
+          expos: expoRes.data.data,
+          sources: sourcesRes.data.data || [],
+          enquiry_types: enquiryRes.data.data.map((x) => x.name),
+          industry_types: industryRes.data.data.map((x) => x.name),
+        };
+        setExpos(data.expos);
+        setSources(data.sources);
+        setEnquiryTypes(data.enquiry_types);
+        setIndustryTypes(data.industry_types);
+        setBaseIndustryTypes(data.industry_types);
+        setEnquiryTypeObjects(enquiryRes.data.data); // store full objects with id
+        cacheMasterData(data);
 
-  const loadFromCache = async () => {
-    setExpos(await getCachedMasterData('expos') || []);
-    setEnquiryTypes(await getCachedMasterData('enquiry_types') || FALLBACK_ENQUIRY);
-    setIndustryTypes(await getCachedMasterData('industry_types') || FALLBACK_INDUSTRY);
-  };
-
-  const validate = () => {
-    const errs = {};
-    if (!form.company_name.trim()) errs.company_name = 'Company name is required';
-    if (!form.customer_name.trim()) errs.customer_name = 'Customer name is required';
-    if (!form.phone_number.trim()) errs.phone_number = 'Phone number is required';
-    else if (!/^\+?[\d\s\-]{7,15}$/.test(form.phone_number)) errs.phone_number = 'Invalid phone number';
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = 'Invalid email address';
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
-  const handleChange = useCallback((e) => {
-    const { name, value, type, checked } = e.target;
-    setForm((prev) => {
-      const updated = { ...prev, [name]: type === 'checkbox' ? checked : value };
-      if (name === 'expo_id') {
-        const expo = expos.find((ex) => String(ex.id) === String(value));
-        updated.expo_name = expo?.expo_name || '';
+        // Sync current expo from DB — this is the global source of truth
+        const dbExpo = currentExpoRes.data.data || null;
+        cacheSelectedExpo(dbExpo);
+        setCurrentExpo(dbExpo);
+        // Pre-fill expo in form if current expo is set and form is still empty
+        if (dbExpo) {
+          setForm((prev) =>
+            prev.expo_id ? prev : { ...prev, expo_id: String(dbExpo.id), expo_name: dbExpo.expo_name }
+          );
+        }
+      } catch (err) {
+        console.error('Master data load error:', err);
       }
-      return updated;
-    });
-    if (errors[name]) setErrors((prev) => { const n = { ...prev }; delete n[name]; return n; });
-  }, [expos, errors]);
+    };
+    loadMasterData();
+  }, [isOnline]);
 
-  const handleClear = () => { setForm(EMPTY_FORM); setErrors({}); };
+  // ── Context-aware industry types ─────────────────────────────────────────────
+  // Strict filtering:
+  //   No expo → only base general list (no custom items shown)
+  //   Expo only → general + custom where expo matches AND enquiry_type_id IS NULL
+  //   Expo + enquiry → general + custom where expo matches AND (enquiry matches OR IS NULL)
+  //   Items from a different expo or different enquiry type are EXCLUDED entirely.
+  useEffect(() => {
+    if (!isOnline) { setIndustryTypes(baseIndustryTypes); return; }
+
+    const expoId   = form.expo_id && !isNaN(Number(form.expo_id)) ? String(form.expo_id) : null;
+    const enquiryObj = enquiryTypeObjects.find(e => e.name === form.enquiry_type);
+    const enquiryId  = enquiryObj ? String(enquiryObj.id) : null;
+
+    if (!expoId) { setIndustryTypes(baseIndustryTypes); return; }
+
+    masterApi.getIndustryTypesForContext(expoId, enquiryId || undefined)
+      .then((res) => {
+        const resData = res.data.data;
+        let generalNames = baseIndustryTypes;
+        let allCustomItems = [];
+
+        if (Array.isArray(resData)) {
+          allCustomItems = resData.filter(d => d.type === 'custom');
+          const g = resData.filter(d => d.type === 'general').map(d => d.name);
+          if (g.length) generalNames = g;
+        } else if (resData && typeof resData === 'object') {
+          allCustomItems = resData.custom || [];
+          const g = (resData.general || []).map(d => d.name);
+          if (g.length) generalNames = g;
+        }
+
+        // Strict filter: item must match the selected expo,
+        // and its enquiry_type_id must be null OR match the selected enquiry.
+        const matchingNames = allCustomItems
+          .filter(item => {
+            const iExpo    = item.expo_id          ? String(item.expo_id)          : null;
+            const iEnquiry = item.enquiry_type_id  ? String(item.enquiry_type_id)  : null;
+            if (iExpo !== expoId) return false;         // wrong expo → exclude
+            if (iEnquiry === null) return true;          // expo match, no enquiry restriction → include
+            if (enquiryId && iEnquiry === enquiryId) return true; // exact match → include
+            return false;                                // different enquiry → exclude
+          })
+          .map(item => item.name);
+
+        // Custom names first, then general names not already listed
+        const customSet = new Set(matchingNames);
+        const merged = [...matchingNames, ...generalNames.filter(n => !customSet.has(n))];
+        setIndustryTypes(merged.length ? merged : baseIndustryTypes);
+      })
+      .catch(() => setIndustryTypes(baseIndustryTypes));
+  }, [form.expo_id, form.enquiry_type, isOnline]);
+
+  // Add new source (NEW)
+  const handleAddSource = async (sourceName) => {
+    try {
+      const res = await masterApi.addSource({ source_name: sourceName });
+      setSources([...sources, res.data.data]);
+      return res.data.data;
+    } catch (err) {
+      console.error('Failed to add source:', err);
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value, checked, type } = e.target;
+    setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!form.customer_name?.trim()) newErrors.customer_name = 'Required';
+    if (!form.company_name?.trim()) newErrors.company_name = 'Required';
+    if (!form.phone_number?.trim()) newErrors.phone_number = 'Required';
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) newErrors.email = 'Invalid email';
+    if (form.email_2 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email_2)) newErrors.email_2 = 'Invalid email'; // NEW
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validate()) { addToast('Please fix validation errors', 'warning'); return; }
+    if (!validateForm()) {
+      addToast('Please fix errors', 'error');
+      return;
+    }
     setLoading(true);
-    const payload = { ...form, employee_id: user.id };
     try {
-      if (isOnline) {
-        await customerApi.create(payload);
-        addToast('Customer registered successfully!', 'success');
+      await customerApi.create(form);
+      addToast('Customer registered successfully', 'success');
+      setForm(makeEmptyForm());
+    } catch (err) {
+      if (!isOnline) {
+        saveOfflineCustomer(form);
+        addToast('Saved offline. Will sync when online.', 'success');
+        setForm(makeEmptyForm());
       } else {
-        await saveOfflineCustomer(payload);
-        addToast('Saved offline. Will sync when connected.', 'warning');
+        addToast(err.response?.data?.message || 'Registration failed', 'error');
       }
-      setForm(EMPTY_FORM); setErrors({});
-      setSubmitted(true); setTimeout(() => setSubmitted(false), 3000);
-    } catch {
-      try { await saveOfflineCustomer(payload); addToast('API error. Saved offline.', 'warning'); setForm(EMPTY_FORM); }
-      catch { addToast('Failed to save. Please try again.', 'error'); }
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClear = () => {
+    setForm(makeEmptyForm());
+    setErrors({});
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
+    <div className="bg-gradient-to-br from-gray-50 to-gray-100 pt-5 pb-2 px-4">
+      <div className="max-w-6xl mx-auto space-y-8 max-h-[95vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-700 flex items-center justify-center shadow-lg shadow-blue-200">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-              </svg>
-            </div>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+          <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Register Customer</h1>
-              <p className="text-gray-500 text-sm">Add a new customer lead from your expo</p>
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Customer Registration</h1>
+              <p className="text-sm text-gray-500 mt-1">Add a new customer to the system</p>
             </div>
-          </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            {/* Import button */}
-            <button
-              type="button"
-              onClick={() => setShowUpload(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-emerald-300 bg-emerald-50 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 transition-all duration-200"
-            >
+            <button onClick={() => setShowUpload(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              Import Excel / CSV
+              Import from Excel
             </button>
-            {/* Online badge */}
-            <div className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-semibold transition-all duration-300 ${
-              isOnline ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
-            }`}>
-              <span className="relative flex h-2 w-2">
-                <span className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${isOnline ? 'bg-emerald-400 animate-ping' : 'bg-amber-400 animate-ping'}`} />
-                <span className={`relative inline-flex rounded-full h-2 w-2 ${isOnline ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-              </span>
-              {isOnline ? 'Online' : 'Offline'}
-            </div>
           </div>
+          {!isOnline && <p className="text-xs text-amber-600 mt-3 px-3 py-2 bg-amber-50 rounded-lg">📡 You're offline - data will be saved locally</p>}
+          {currentExpo ? (
+            <p className="text-xs text-blue-700 mt-3 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2">
+              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+              <span><strong>Current Expo:</strong> {currentExpo.expo_name} — pre-selected for all users. Change it in <em>Master Data → Expo Names</em>.</span>
+            </p>
+          ) : (
+            <p className="text-xs text-gray-500 mt-3 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg flex items-center gap-2">
+              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <span>No current expo set. Use <em>Master Data → Expo Names</em> to set one, or choose <em>Others</em> in the dropdown.</span>
+            </p>
+          )}
         </div>
 
-        {/* Success Banner */}
-        {submitted && (
-          <div className="mb-6 flex items-center gap-3 px-5 py-4 rounded-xl bg-emerald-50 border border-emerald-200">
-            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-emerald-800">Customer registered successfully!</p>
-              <p className="text-xs text-emerald-600">The form has been reset for the next entry.</p>
-            </div>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} noValidate className="space-y-6 max-h-[78vh] overflow-y-auto pb-2">
-
-          {/* Expo */}
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Company & Customer Info */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible">
             <div className="p-6">
               <SectionHeader
-                icon={<svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>}
-                title="Expo Information" subtitle="Select the expo where this lead was collected"
-              />
-              <div className="max-w-md">
-                <FieldWrapper label="Expo Name" error={errors.expo_id}>
-                  <div className="relative">
-                    <select name="expo_id" value={form.expo_id} onChange={handleChange} className={getSelectClasses(!!errors.expo_id)}>
-                      <option value="">Select an expo...</option>
-                      {expos.map((ex) => <option key={ex.id} value={ex.id}>{ex.expo_name}</option>)}
-                    </select>
-                    <SelectChevron />
-                  </div>
-                </FieldWrapper>
-              </div>
-            </div>
-          </div>
-
-          {/* Customer Details */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible">
-            <div className="p-6">
-              <SectionHeader
-                icon={<svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
-                title="Customer Details" subtitle="Basic information about the customer"
+                icon={<svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" /></svg>}
+                title="Company & Customer Information" subtitle="Basic details about the customer"
               />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <FieldWrapper label="Company Name" required error={errors.company_name}>
                   <input type="text" name="company_name" value={form.company_name} onChange={handleChange} placeholder="Enter company name" className={getInputClasses(!!errors.company_name)} />
                 </FieldWrapper>
                 <FieldWrapper label="Customer Name" required error={errors.customer_name}>
-                  <input type="text" name="customer_name" value={form.customer_name} onChange={handleChange} placeholder="Enter customer name" className={getInputClasses(!!errors.customer_name)} />
+                  <input type="text" name="customer_name" value={form.customer_name} onChange={handleChange} placeholder="Full name of contact person" className={getInputClasses(!!errors.customer_name)} />
                 </FieldWrapper>
                 <FieldWrapper label="Designation" error={errors.designation}>
-                  <input type="text" name="designation" value={form.designation} onChange={handleChange} placeholder="e.g. Manager, Director" className={getInputClasses(!!errors.designation)} />
+                  <input type="text" name="designation" value={form.designation} onChange={handleChange} placeholder="e.g., Manager, Developer" className={getInputClasses(!!errors.designation)} />
                 </FieldWrapper>
-                <FieldWrapper label="Phone Number" required error={errors.phone_number}>
+                <FieldWrapper label="Expo Name / Source" error={errors.expo_id}>
+                  <ExpoDropdown name="expo_id" value={form.expo_id || form.expo_name || ''} onChange={handleChange} sources={sources} onAddSource={handleAddSource} hasError={!!errors.expo_id} currentExpo={currentExpo} />
+                </FieldWrapper>
+              </div>
+            </div>
+          </div>
+
+          {/* Contact Information */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible">
+            <div className="p-6">
+              <SectionHeader
+                icon={<svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>}
+                title="Contact Information" subtitle="Phone, email and web details"
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <FieldWrapper label="Phone Number 1" required error={errors.phone_number}>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                       <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
@@ -844,14 +950,46 @@ export default function CustomerRegistration() {
                     <input type="tel" name="phone_number" value={form.phone_number} onChange={handleChange} placeholder="+91 99999 99999" className={`${getInputClasses(!!errors.phone_number)} pl-10`} />
                   </div>
                 </FieldWrapper>
-                <FieldWrapper label="Email Address" error={errors.email}>
+
+                {/* Phone 2 (NEW) */}
+                <FieldWrapper label="Phone Number 2" error={errors.mobile_no_2}>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                      <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" /></svg>
+                      <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                    </div>
+                    <input type="tel" name="mobile_no_2" value={form.mobile_no_2} onChange={handleChange} placeholder="+91 99999 99999" className={`${getInputClasses(!!errors.mobile_no_2)} pl-10`} />
+                  </div>
+                </FieldWrapper>
+
+                <FieldWrapper label="Email 1" error={errors.email}>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                     </div>
                     <input type="email" name="email" value={form.email} onChange={handleChange} placeholder="email@example.com" className={`${getInputClasses(!!errors.email)} pl-10`} />
                   </div>
                 </FieldWrapper>
+
+                {/* Email 2 (NEW) */}
+                <FieldWrapper label="Email 2" error={errors.email_2}>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                    </div>
+                    <input type="email" name="email_2" value={form.email_2} onChange={handleChange} placeholder="email2@example.com" className={`${getInputClasses(!!errors.email_2)} pl-10`} />
+                  </div>
+                </FieldWrapper>
+
+                {/* Website (NEW) */}
+                <FieldWrapper label="Website" error={errors.website}>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.658 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                    </div>
+                    <input type="text" name="website" value={form.website} onChange={handleChange} placeholder="www.company.com" className={`${getInputClasses(!!errors.website)} pl-10`} />
+                  </div>
+                </FieldWrapper>
+
                 <FieldWrapper label="Enquiry Type" error={errors.enquiry_type}>
                   <AutocompleteInput name="enquiry_type" value={form.enquiry_type} onChange={handleChange} suggestions={enquiryTypes} placeholder="Type or pick enquiry type…" hasError={!!errors.enquiry_type} />
                 </FieldWrapper>
@@ -888,30 +1026,16 @@ export default function CustomerRegistration() {
             </div>
           </div>
 
-          {/* Messaging — 2 checkboxes only */}
+          {/* Messaging */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="p-6">
               <SectionHeader
                 icon={<svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>}
-                title="Messaging" subtitle="Mark if SMS or WhatsApp message should be sent to this customer"
+                title="Messaging" subtitle="Mark if SMS or WhatsApp message should be sent"
               />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <MessagingCheckbox
-                  id="sms_sent"
-                  checked={form.sms_sent}
-                  onChange={handleChange}
-                  label="Send SMS"
-                  sublabel="Queue an SMS for this customer"
-                  icon="✉️"
-                />
-                <MessagingCheckbox
-                  id="wa_sent"
-                  checked={form.wa_sent}
-                  onChange={handleChange}
-                  label="Send WhatsApp"
-                  sublabel="Queue a WhatsApp message"
-                  icon="💬"
-                />
+                <MessagingCheckbox id="sms_sent" checked={form.sms_sent} onChange={handleChange} label="Send SMS" sublabel="Queue an SMS for this customer" icon="✉️" />
+                <MessagingCheckbox id="wa_sent" checked={form.wa_sent} onChange={handleChange} label="Send WhatsApp" sublabel="Queue a WhatsApp message" icon="💬" />
               </div>
             </div>
           </div>
@@ -923,11 +1047,7 @@ export default function CustomerRegistration() {
                 icon={<svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>}
                 title="Additional Notes" subtitle="Any remarks or special requirements"
               />
-              <textarea
-                name="remarks" value={form.remarks} onChange={handleChange} rows={4}
-                placeholder="Add any notes, requirements, or observations about the customer..."
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 placeholder-gray-400 border-gray-500 focus:outline-none focus:ring-[1.5] focus:ring-black focus:border-black transition-all duration-200 resize-none"
-              />
+              <textarea name="remarks" value={form.remarks} onChange={handleChange} rows={4} placeholder="Add any notes, requirements, or observations about the customer…" className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 placeholder-gray-400 border-gray-500 focus:outline-none focus:ring-[1.5] focus:ring-black focus:border-black transition-all duration-200 resize-none" />
             </div>
           </div>
 
@@ -945,21 +1065,36 @@ export default function CustomerRegistration() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button type="button" onClick={handleClear}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all duration-200 active:scale-[0.98]">
+                  <button
+                    type="button"
+                    onClick={handleClear}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all duration-200 active:scale-[0.98]"
+                  >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                     Clear Form
                   </button>
-                  <button type="submit" disabled={loading}
+                  <button
+                    type="submit"
+                    disabled={loading}
                     className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm active:scale-[0.98] ${
                       loading ? 'bg-blue-400 text-white cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'
-                    }`}>
+                    }`}
+                  >
                     {loading ? (
-                      <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Saving...</>
+                      <>
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                        Saving...
+                      </>
                     ) : isOnline ? (
-                      <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>Register Customer</>
+                      <>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                        Register Customer
+                      </>
                     ) : (
-                      <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>Save Offline</>
+                      <>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        Save Offline
+                      </>
                     )}
                   </button>
                 </div>
@@ -967,16 +1102,10 @@ export default function CustomerRegistration() {
             </div>
           </div>
         </form>
-      </div>
 
-      {/* Excel Upload Modal */}
-      {showUpload && (
-        <ExcelUploadModal
-          onClose={() => setShowUpload(false)}
-          expos={expos}
-          onImportDone={() => addToast('Import complete! Records added to database.', 'success')}
-        />
-      )}
+        {/* Excel Upload Modal */}
+        {showUpload && <ExcelUploadModal onClose={() => setShowUpload(false)} currentExpo={currentExpo} onImportDone={() => addToast('Import complete!', 'success')} />}
+      </div>
     </div>
   );
 }

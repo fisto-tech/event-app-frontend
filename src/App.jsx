@@ -1,9 +1,12 @@
 import React, { lazy, Suspense } from 'react';
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './hooks/useAuth';
 import { ToastProvider } from './components/Toast';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import Layout from './components/Layout';
+import { registerServiceWorker } from "./pushNotifications";
+
 
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -24,7 +27,11 @@ const PageLoader = () => (
   </div>
 );
 
+
 export default function App() {
+  useEffect(() => {
+     registerServiceWorker();
+   }, []);
   return (
     <BrowserRouter>
       <AuthProvider>

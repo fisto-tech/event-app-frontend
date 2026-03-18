@@ -114,7 +114,7 @@ export default function Dashboard() {
       badge: pendingCount,
     },
     {
-      title: 'Reports',
+      title: 'Customer Reports',
       subtitle: 'View, search, filter and manage all registered customers',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

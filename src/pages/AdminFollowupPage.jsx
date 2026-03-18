@@ -533,19 +533,19 @@ export default function AdminFollowupPage() {
           <p className="text-sm text-gray-500 mt-2 ">All follow-ups are on track. Great work!</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-6 ">
+        <div className="flex flex-col gap-6 overflow-y-auto max-h-[50vh]">
           {BRACKETS.map((bracket) => {
             const rows = getRows(bracket);
             if (rows.length === 0) return null;
             const isCollapsed = collapsedBrackets[bracket.label];
 
             return (
-              <div key={bracket.label} className={`border-2 ${bracket.borderColor} rounded-2xl overflow-hidden shadow-sm`}>
+              <div key={bracket.label} className={`rounded-2xl shadow-sm`}>
                 {/* Bracket Header */}
                 <button
                   onClick={() => toggleBracket(bracket.label)}
                   className={`w-full flex items-center justify-between px-5 py-4 ${bracket.headerBg} 
-                             ${bracket.headerText} cursor-pointer focus:outline-none transition-colors`}
+                             ${bracket.headerText} cursor-pointer focus:outline-none transition-all duration-500 overflow-hidden rounded-t-2xl ${isCollapsed ? 'rounded-b-2xl' : ''}`}
                   type="button"
                 >
                   <div className="flex items-center gap-3">
@@ -563,7 +563,7 @@ export default function AdminFollowupPage() {
                 </button>
 
                 {/* Bracket Content */}
-                <div className={`transition-all duration-200 ${isCollapsed ? 'max-h-0 overflow-hidden' : 'max-h-[5000px]'}`}>
+                <div className={`transition-all duration-400 ${isCollapsed ? 'max-h-0 overflow-hidden' : 'max-h-[5000px]'}`}>
                   {/* Desktop Table */}
                   <div className="hidden lg:block overflow-x-auto">
                     <table className="w-full border-collapse">
