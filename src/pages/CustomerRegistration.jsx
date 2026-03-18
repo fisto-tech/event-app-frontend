@@ -16,8 +16,8 @@ function cacheSelectedExpo(expo) {
   else localStorage.removeItem(SELECTED_EXPO_KEY);
 }
 
-const FALLBACK_ENQUIRY = ['Website', 'Web App', 'Android App', 'Customised Software', 'ERP', 'CRM', 'Other'];
-const FALLBACK_INDUSTRY = ['Agriculture', 'Adhesives', 'Packaging', 'Manufacturing', 'Education', 'Retail', 'IT', 'Healthcare', 'Other'];
+const FALLBACK_ENQUIRY = [];
+const FALLBACK_INDUSTRY = [];
 
 function makeEmptyForm() {
   const sel = getSelectedExpo();
@@ -712,11 +712,10 @@ export default function CustomerRegistration() {
   const [sources, setSources] = useState([]);
   const [enquiryTypes, setEnquiryTypes] = useState(FALLBACK_ENQUIRY);
   const [industryTypes, setIndustryTypes] = useState(FALLBACK_INDUSTRY);
-  const [baseIndustryTypes, setBaseIndustryTypes] = useState(FALLBACK_INDUSTRY); // full general list always kept
+  const [baseEnquiryTypes, setBaseEnquiryTypes] = useState(FALLBACK_ENQUIRY); // general (expo_id=null) entries
+  const [baseIndustryTypes, setBaseIndustryTypes] = useState(FALLBACK_INDUSTRY); // general (expo_id=null) entries
   const [showUpload, setShowUpload] = useState(false);
   const [currentExpo, setCurrentExpo] = useState(() => getSelectedExpo());
-  // Track enquiry type ids for context loading
-  const [enquiryTypeObjects, setEnquiryTypeObjects] = useState([]);
 
   // Load master data + current expo from API
   useEffect(() => {
@@ -724,8 +723,8 @@ export default function CustomerRegistration() {
       try {
         const cached = getCachedMasterData();
         if (cached) {
-          setExpos(cached.expos || []);
           setEnquiryTypes(cached.enquiry_types || FALLBACK_ENQUIRY);
+          setBaseEnquiryTypes(cached.enquiry_types || FALLBACK_ENQUIRY);
           setIndustryTypes(cached.industry_types || FALLBACK_INDUSTRY);
           setBaseIndustryTypes(cached.industry_types || FALLBACK_INDUSTRY);
         }
@@ -733,22 +732,29 @@ export default function CustomerRegistration() {
         const [expoRes, sourcesRes, enquiryRes, industryRes, currentExpoRes] = await Promise.all([
           masterApi.getExpos(),
           masterApi.getSources(),
-          masterApi.getEnquiryTypes(),
-          masterApi.getIndustryTypes(),
+          masterApi.getEnquiryTypes(),   // returns enquiry_types_custom rows
+          masterApi.getIndustryTypes(),  // returns industry_types_custom rows
           masterApi.getCurrentExpo(),
         ]);
+
+        // General entries = expo_id IS NULL
+        const allEnquiry = enquiryRes.data.data || [];
+        const allIndustry = industryRes.data.data || [];
+        const generalEnquiryNames = allEnquiry.filter(x => !x.expo_id).map(x => x.name);
+        const generalIndustryNames = allIndustry.filter(x => !x.expo_id).map(x => x.name);
+
         const data = {
           expos: expoRes.data.data,
           sources: sourcesRes.data.data || [],
-          enquiry_types: enquiryRes.data.data.map((x) => x.name),
-          industry_types: industryRes.data.data.map((x) => x.name),
+          enquiry_types: generalEnquiryNames,
+          industry_types: generalIndustryNames,
         };
         setExpos(data.expos);
         setSources(data.sources);
-        setEnquiryTypes(data.enquiry_types);
-        setIndustryTypes(data.industry_types);
-        setBaseIndustryTypes(data.industry_types);
-        setEnquiryTypeObjects(enquiryRes.data.data); // store full objects with id
+        setEnquiryTypes(generalEnquiryNames);
+        setBaseEnquiryTypes(generalEnquiryNames);
+        setIndustryTypes(generalIndustryNames);
+        setBaseIndustryTypes(generalIndustryNames);
         cacheMasterData(data);
 
         // Sync current expo from DB — this is the global source of truth
@@ -768,57 +774,36 @@ export default function CustomerRegistration() {
     loadMasterData();
   }, [isOnline]);
 
-  // ── Context-aware industry types ─────────────────────────────────────────────
-  // Strict filtering:
-  //   No expo → only base general list (no custom items shown)
-  //   Expo only → general + custom where expo matches AND enquiry_type_id IS NULL
-  //   Expo + enquiry → general + custom where expo matches AND (enquiry matches OR IS NULL)
-  //   Items from a different expo or different enquiry type are EXCLUDED entirely.
+  // ── Context-aware enquiry + industry types ────────────────────────────────────
+  // When an expo is selected: fetch scoped lists (general + expo-specific) from
+  // the SMS templates context endpoint (which returns enquiryTypes + industryTypes).
+  // When no expo: fall back to general-only (expo_id IS NULL) base lists.
   useEffect(() => {
-    if (!isOnline) { setIndustryTypes(baseIndustryTypes); return; }
+    if (!isOnline) {
+      setEnquiryTypes(baseEnquiryTypes);
+      setIndustryTypes(baseIndustryTypes);
+      return;
+    }
+    const expoId = form.expo_id && !isNaN(Number(form.expo_id)) ? String(form.expo_id) : null;
 
-    const expoId   = form.expo_id && !isNaN(Number(form.expo_id)) ? String(form.expo_id) : null;
-    const enquiryObj = enquiryTypeObjects.find(e => e.name === form.enquiry_type);
-    const enquiryId  = enquiryObj ? String(enquiryObj.id) : null;
+    if (!expoId) {
+      setEnquiryTypes(baseEnquiryTypes);
+      setIndustryTypes(baseIndustryTypes);
+      return;
+    }
 
-    if (!expoId) { setIndustryTypes(baseIndustryTypes); return; }
-
-    masterApi.getIndustryTypesForContext(expoId, enquiryId || undefined)
+    // Use the SMS context endpoint — it returns scoped enquiryTypes + industryTypes
+    masterApi.getSmsTemplatesForContext(expoId)
       .then((res) => {
-        const resData = res.data.data;
-        let generalNames = baseIndustryTypes;
-        let allCustomItems = [];
-
-        if (Array.isArray(resData)) {
-          allCustomItems = resData.filter(d => d.type === 'custom');
-          const g = resData.filter(d => d.type === 'general').map(d => d.name);
-          if (g.length) generalNames = g;
-        } else if (resData && typeof resData === 'object') {
-          allCustomItems = resData.custom || [];
-          const g = (resData.general || []).map(d => d.name);
-          if (g.length) generalNames = g;
-        }
-
-        // Strict filter: item must match the selected expo,
-        // and its enquiry_type_id must be null OR match the selected enquiry.
-        const matchingNames = allCustomItems
-          .filter(item => {
-            const iExpo    = item.expo_id          ? String(item.expo_id)          : null;
-            const iEnquiry = item.enquiry_type_id  ? String(item.enquiry_type_id)  : null;
-            if (iExpo !== expoId) return false;         // wrong expo → exclude
-            if (iEnquiry === null) return true;          // expo match, no enquiry restriction → include
-            if (enquiryId && iEnquiry === enquiryId) return true; // exact match → include
-            return false;                                // different enquiry → exclude
-          })
-          .map(item => item.name);
-
-        // Custom names first, then general names not already listed
-        const customSet = new Set(matchingNames);
-        const merged = [...matchingNames, ...generalNames.filter(n => !customSet.has(n))];
-        setIndustryTypes(merged.length ? merged : baseIndustryTypes);
+        const d = res.data.data;
+        if (d && d.enquiryTypes) setEnquiryTypes(d.enquiryTypes.map(x => x.name));
+        if (d && d.industryTypes) setIndustryTypes(d.industryTypes.map(x => x.name));
       })
-      .catch(() => setIndustryTypes(baseIndustryTypes));
-  }, [form.expo_id, form.enquiry_type, isOnline]);
+      .catch(() => {
+        setEnquiryTypes(baseEnquiryTypes);
+        setIndustryTypes(baseIndustryTypes);
+      });
+  }, [form.expo_id, isOnline]);
 
   // Add new source (NEW)
   const handleAddSource = async (sourceName) => {

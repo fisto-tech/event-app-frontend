@@ -45,56 +45,57 @@ export const masterApi = {
 
   getEnquiryTypes: () => api.get('/master/enquiry-types'),
   createEnquiryType: (data) => api.post('/master/enquiry-types', data),
+  updateEnquiryType: (id, data) => api.put(`/master/enquiry-types/${id}`, data),
   deleteEnquiryType: (id) => api.delete(`/master/enquiry-types/${id}`),
 
   getIndustryTypes: () => api.get('/master/industry-types'),
   createIndustryType: (data) => api.post('/master/industry-types', data),
+  updateIndustryType: (id, data) => api.put(`/master/industry-types/${id}`, data),
   deleteIndustryType: (id) => api.delete(`/master/industry-types/${id}`),
 
   getSmsTemplates: () => api.get('/master/sms-templates'),
   createSmsTemplate: (data) => api.post('/master/sms-templates', data),
+  updateSmsTemplate: (id, data) => api.put(`/master/sms-templates/${id}`, data),
   deleteSmsTemplate: (id) => api.delete(`/master/sms-templates/${id}`),
 
   getWhatsappTemplates: () => api.get('/master/whatsapp-templates'),
   createWhatsappTemplate: (data) => api.post('/master/whatsapp-templates', data),
+  updateWhatsappTemplate: (id, data) => api.put(`/master/whatsapp-templates/${id}`, data),
   deleteWhatsappTemplate: (id) => api.delete(`/master/whatsapp-templates/${id}`),
 
   getEmailTemplates: () => api.get('/master/email-templates'),
   createEmailTemplate: (data) => api.post('/master/email-templates', data),
   deleteEmailTemplate: (id) => api.delete(`/master/email-templates/${id}`),
 
-  // ✅ NEW METHODS (add these below)
-  
+  // ✅ NEW METHODS
+
   // Sources Management
   getSources: () => api.get('/master/sources'),
   addSource: (data) => api.post('/master/sources', data),
 
-  // Industry Types - Context Aware
-  getIndustryTypesForContext: (expoId, enquiryTypeId) => {
-    const params = {};
-    if (expoId) params.expo_id = expoId;
-    if (enquiryTypeId) params.enquiry_type_id = enquiryTypeId;
-    return api.get('/master/industry-types/context', { params });
-  },
-  createCustomIndustryType: (data) => api.post('/master/industry-types/custom', data),
-
   // SMS Templates - Context Aware
-  getSmsTemplatesForContext: (expoId, enquiryTypeId) => {
+  // Returns { general, custom, enquiryTypes, industryTypes } scoped to expo when provided
+  getSmsTemplatesForContext: (expoId, enquiryTypeId, industryTypeId) => {
     const params = {};
     if (expoId) params.expo_id = expoId;
     if (enquiryTypeId) params.enquiry_type_id = enquiryTypeId;
+    if (industryTypeId) params.industry_type_id = industryTypeId;
     return api.get('/master/sms-templates/context', { params });
   },
   createCustomSmsTemplate: (data) => api.post('/master/sms-templates/custom', data),
+  deleteCustomSmsTemplate: (id) => api.delete(`/master/sms-templates/custom/${id}`),
 
   // WhatsApp Templates - Context Aware
-  getWhatsappTemplatesForContext: (expoId, enquiryTypeId) => {
+  // Returns { general, custom, enquiryTypes, industryTypes } — enquiry/industry scoped to expo when provided
+  getWhatsappTemplatesForContext: (expoId, enquiryTypeId, industryTypeId) => {
     const params = {};
     if (expoId) params.expo_id = expoId;
     if (enquiryTypeId) params.enquiry_type_id = enquiryTypeId;
+    if (industryTypeId) params.industry_type_id = industryTypeId;
     return api.get('/master/whatsapp-templates/context', { params });
   },
   createCustomWhatsappTemplate: (data) => api.post('/master/whatsapp-templates/custom', data),
+  deleteCustomWhatsappTemplate: (id) => api.delete(`/master/whatsapp-templates/custom/${id}`),
 
   // Email Templates - Context Aware
   getEmailTemplatesForContext: (expoId, enquiryTypeId) => {

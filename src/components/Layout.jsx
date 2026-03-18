@@ -35,33 +35,33 @@ const NAV_LINKS = [
     ),
   },
   {
-  to: '/followup',
-  label: 'Followup',
-  icon: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path 
-        strokeLinecap="round" 
-        strokeLinejoin="round" 
-        strokeWidth={1.5} 
-        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
-      />
-    </svg>
-  ),
-},
+    to: '/followup',
+    label: 'Followup',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path 
+          strokeLinecap="round" 
+          strokeLinejoin="round" 
+          strokeWidth={1.5} 
+          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
+        />
+      </svg>
+    ),
+  },
   {
-  to: '/admin/followup',
-  label: 'Missed Followup',
-  icon: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path 
-        strokeLinecap="round" 
-        strokeLinejoin="round" 
-        strokeWidth={1.5} 
-        d="M12 9v3m0 4h.01M10.29 3.86l-7.4 12.83A1 1 0 003.8 18h16.4a1 1 0 00.91-1.31l-7.4-12.83a1 1 0 00-1.82 0z" 
-      />
-    </svg>
-  ),
-},
+    to: '/admin/followup',
+    label: 'Missed Followup',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path 
+          strokeLinecap="round" 
+          strokeLinejoin="round" 
+          strokeWidth={1.5} 
+          d="M12 9v3m0 4h.01M10.29 3.86l-7.4 12.83A1 1 0 003.8 18h16.4a1 1 0 00.91-1.31l-7.4-12.83a1 1 0 00-1.82 0z" 
+        />
+      </svg>
+    ),
+  },
   {
     to: '/reports',
     label: 'Customer Reports',
@@ -83,6 +83,136 @@ const NAV_LINKS = [
   },
 ];
 
+// ─── LOGOUT CONFIRMATION MODAL ────────────────────────────────────────────────
+function LogoutModal({ isOpen, onClose, onConfirm, userName }) {
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fadeIn"
+        onClick={onClose}
+      />
+      
+      {/* Modal */}
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-scaleIn">
+        {/* Header with gradient */}
+        <div className="bg-gradient-to-br from-gray-800 to-gray-900 px-6 py-8 text-center">
+          <div className="w-16 h-16 mx-auto bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center mb-4 ring-4 ring-white/20">
+            <svg 
+              className="w-8 h-8 text-white" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={1.5} 
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" 
+              />
+            </svg>
+          </div>
+          <h3 className="text-xl font-bold text-white mb-1">
+            Sign out of your account?
+          </h3>
+          <p className="text-gray-300 text-sm">
+            You are about to sign out.
+          </p>
+        </div>
+
+        {/* Content */}
+        <div className="px-6 py-5">
+          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 mb-5">
+            <div className="w-10 h-10 bg-gradient-to-br from-gray-700 to-gray-900 text-white rounded-xl flex items-center justify-center font-bold text-sm shadow-sm flex-shrink-0">
+              {userName?.[0]?.toUpperCase() || 'U'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">
+                {userName || 'User'}
+              </p>
+              <p className="text-xs text-gray-500">
+                Current session will end
+              </p>
+            </div>
+          </div>
+
+          <p className="text-sm text-gray-600 text-center mb-5">
+            Are you sure you want to logout? You'll need to sign in again to access your account.
+          </p>
+
+          {/* Action buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 hover:border-gray-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/25 hover:shadow-red-500/40 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 cursor-pointer"
+            >
+              <span className="flex items-center justify-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" />
+                </svg>
+                Logout
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-all duration-200"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      {/* CSS for animations */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+          from { 
+            opacity: 0; 
+            transform: scale(0.95) translateY(10px); 
+          }
+          to { 
+            opacity: 1; 
+            transform: scale(1) translateY(0); 
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out forwards;
+        }
+        .animate-scaleIn {
+          animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+      `}</style>
+    </div>
+  );
+}
+
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -91,6 +221,7 @@ export default function Layout() {
   const [pendingCount, setPendingCount] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   useEffect(() => {
     const update = async () => {
@@ -128,6 +259,7 @@ export default function Layout() {
   };
 
   const handleLogout = () => {
+    setShowLogoutModal(false);
     logout();
     navigate('/login');
   };
@@ -136,6 +268,14 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen flex bg-gray-50">
+      {/* Logout Confirmation Modal */}
+      <LogoutModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={handleLogout}
+        userName={user?.name}
+      />
+
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -302,11 +442,7 @@ export default function Layout() {
               <div className="text-[11px] text-gray-500 capitalize">{user?.role}</div>
             </div>
             <button
-              onClick={() => {
-                if (confirm('Do you want to logout?')) {
-                  handleLogout();
-                }
-              }}
+              onClick={() => setShowLogoutModal(true)}
               className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200 flex-shrink-0 cursor-pointer"
               title="Logout"
             >

@@ -432,8 +432,10 @@ export default function Reports() {
   const [filters, setFilters] = useState({ expo_id: '', industry_type: '', enquiry_type: '' });
   const [expos, setExpos] = useState([]);
   const [sources, setSources] = useState([]);
-  const [industries, setIndustries] = useState([]);
-  const [enquiries, setEnquiries] = useState([]);
+  const [industries, setIndustries] = useState([]);       // general (expo_id=null) industry names
+  const [enquiries, setEnquiries] = useState([]);         // general (expo_id=null) enquiry names
+  const [editEnquiries, setEditEnquiries] = useState([]); // scoped for edit modal
+  const [editIndustries, setEditIndustries] = useState([]); // scoped for edit modal
   const [editRecord, setEditRecord] = useState(null);
   const [viewRecord, setViewRecord] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
@@ -485,21 +487,47 @@ export default function Reports() {
     Promise.all([
       masterApi.getExpos(),
       masterApi.getSources(),
-      masterApi.getEnquiryTypes(),
-      masterApi.getIndustryTypes(),
+      masterApi.getEnquiryTypes(),   // returns enquiry_types_custom rows
+      masterApi.getIndustryTypes(),  // returns industry_types_custom rows
       masterApi.getCurrentExpo(),
     ])
       .then(([e, src, eq, i, ce]) => {
         setExpos(e.data.data);
         setSources(src.data.data || []);
-        setEnquiries(eq.data.data.map((x) => x.name));
-        setIndustries(i.data.data.map((x) => x.name));
+        // General entries = expo_id IS NULL
+        const generalEnquiries = (eq.data.data || []).filter(x => !x.expo_id).map(x => x.name);
+        const generalIndustries = (i.data.data || []).filter(x => !x.expo_id).map(x => x.name);
+        setEnquiries(generalEnquiries);
+        setIndustries(generalIndustries);
+        setEditEnquiries(generalEnquiries);
+        setEditIndustries(generalIndustries);
         const dbExpo = ce.data.data || null;
         cacheSelectedExpo(dbExpo);
         setCurrentExpo(dbExpo);
       })
       .catch(() => {});
   }, [isOnline]);
+
+  // When the edit modal's expo changes, refresh scoped enquiry + industry lists
+  useEffect(() => {
+    if (!editRecord || !isOnline) return;
+    const expoId = editRecord.expo_id && !isNaN(Number(editRecord.expo_id)) ? String(editRecord.expo_id) : null;
+    if (!expoId) {
+      setEditEnquiries(enquiries);
+      setEditIndustries(industries);
+      return;
+    }
+    masterApi.getSmsTemplatesForContext(expoId)
+      .then((res) => {
+        const d = res.data.data;
+        if (d && d.enquiryTypes) setEditEnquiries(d.enquiryTypes.map(x => x.name));
+        if (d && d.industryTypes) setEditIndustries(d.industryTypes.map(x => x.name));
+      })
+      .catch(() => {
+        setEditEnquiries(enquiries);
+        setEditIndustries(industries);
+      });
+  }, [editRecord?.expo_id, isOnline]);
 
   // Add new source
   const handleAddSource = async (sourceName) => {
@@ -972,7 +1000,7 @@ export default function Reports() {
                       onChange={(e) => setEditRecord({...editRecord, enquiry_type: e.target.value})}
                       className={getInputClasses(false)}>
                       <option value="">Select Type</option>
-                      {enquiries.map((eq) => <option key={eq} value={eq}>{eq}</option>)}
+                      {editEnquiries.map((eq) => <option key={eq} value={eq}>{eq}</option>)}
                     </select>
                     
                   </div>
@@ -984,7 +1012,7 @@ export default function Reports() {
                       onChange={(e) => setEditRecord({...editRecord, industry_type: e.target.value})}
                       className={getInputClasses(false)}>
                       <option value="">Select Type</option>
-                      {industries.map((ind) => <option key={ind} value={ind}>{ind}</option>)}
+                      {editIndustries.map((ind) => <option key={ind} value={ind}>{ind}</option>)}
                     </select>
                     
                   </div>

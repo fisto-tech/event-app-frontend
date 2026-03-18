@@ -377,29 +377,49 @@ function MultiDatePicker({ dates = [], onChange }) {
 
 // ─── EXPO TAB (dedicated — has name + dates + remarks) ───────────────────────
 function ExpoTab({
-  data, loading, onAdd, onDelete,
+  data, loading, onAdd, onUpdate, onDelete,
   onSetCurrentExpo, currentExpoFromParent,
 }) {
   const inputCls = 'w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200';
 
-  const [form, setForm]             = useState({ expo_name: '', conduct_dates: [], remarks: '' });
-  const [adding, setAdding]         = useState(false);
-  const [deletingId, setDeletingId] = useState(null);
+  const BLANK = { expo_name: '', conduct_dates: [], remarks: '' };
+  const [form, setForm]               = useState(BLANK);
+  const [editingId, setEditingId]     = useState(null); // null = add mode, id = edit mode
+  const [saving, setSaving]           = useState(false);
+  const [deletingId, setDeletingId]   = useState(null);
   const [showConfirm, setShowConfirm] = useState(null);
-  const [settingId, setSettingId]   = useState(null);
+  const [settingId, setSettingId]     = useState(null);
   const [currentExpo, setCurrentExpo] = useState(() => getSelectedExpo());
 
   useEffect(() => { if (currentExpoFromParent !== undefined) setCurrentExpo(currentExpoFromParent); }, [currentExpoFromParent]);
 
   const isFormValid = form.expo_name.trim().length > 0;
 
-  const handleAdd = async () => {
+  const startEdit = (item) => {
+    setEditingId(item.id);
+    setForm({
+      expo_name: item.expo_name,
+      conduct_dates: Array.isArray(item.conduct_dates) ? item.conduct_dates : [],
+      remarks: item.remarks || '',
+    });
+    // Scroll to top of form
+    document.getElementById('expo-form-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const cancelEdit = () => { setEditingId(null); setForm(BLANK); };
+
+  const handleSave = async () => {
     if (!isFormValid) return;
-    setAdding(true);
+    setSaving(true);
     try {
-      await onAdd(form);
-      setForm({ expo_name: '', conduct_dates: [], remarks: '' });
-    } finally { setAdding(false); }
+      if (editingId) {
+        await onUpdate(editingId, form);
+        setEditingId(null);
+      } else {
+        await onAdd(form);
+      }
+      setForm(BLANK);
+    } finally { setSaving(false); }
   };
 
   const handleDelete = async (id) => {
@@ -412,16 +432,20 @@ function ExpoTab({
   return (
     <div className="space-y-5 max-h-[60vh] overflow-y-auto pb-2">
 
-      {/* ── Add Expo Form ── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-800 text-sm">Add New Expo</h3>
+      {/* ── Add / Edit Expo Form ── */}
+      <div id="expo-form-top" className={`bg-white rounded-xl border shadow-sm overflow-hidden transition-all ${editingId ? 'border-amber-300' : 'border-gray-200'}`}>
+        <div className={`px-6 py-4 border-b flex items-center justify-between ${editingId ? 'bg-gradient-to-r from-amber-50 to-white border-amber-100' : 'bg-gradient-to-r from-gray-50 to-white border-gray-100'}`}>
+          <h3 className={`font-semibold text-sm ${editingId ? 'text-amber-800' : 'text-gray-800'}`}>
+            {editingId ? '✏️ Edit Expo' : 'Add New Expo'}
+          </h3>
+          {editingId && (
+            <button onClick={cancelEdit} className="text-xs text-gray-500 hover:text-gray-700 px-3 py-1 rounded-lg hover:bg-gray-100 transition-all font-medium">
+              Cancel
+            </button>
+          )}
         </div>
         <div className="p-6 space-y-5">
-
-          {/* ── Row 1: 2-column — Expo Name + Date of Conduct ── */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-            {/* Left: Expo Name + Remarks stacked */}
             <div className="space-y-5">
               <div>
                 <label className="block text-xs font-semibold text-gray-900 uppercase tracking-wide mb-1.5">
@@ -432,11 +456,10 @@ function ExpoTab({
                   placeholder="e.g. Tech Expo 2026"
                   value={form.expo_name}
                   onChange={(e) => setForm({ ...form, expo_name: e.target.value })}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && isFormValid && !adding) handleAdd(); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && isFormValid && !saving) handleSave(); }}
                   className={inputCls}
                 />
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-gray-900 uppercase tracking-wide mb-1.5">
                   Remarks / Notes
@@ -451,8 +474,6 @@ function ExpoTab({
                 />
               </div>
             </div>
-
-            {/* Right: Date of Conduct calendar */}
             <div>
               <label className="block text-xs font-semibold text-gray-900 uppercase tracking-wide mb-1.5">
                 Date(s) of Conduct
@@ -464,20 +485,21 @@ function ExpoTab({
               />
             </div>
           </div>
-
           <div className="flex justify-end pt-1">
             <button
-              onClick={handleAdd}
-              disabled={adding || !isFormValid}
+              onClick={handleSave}
+              disabled={saving || !isFormValid}
               className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                isFormValid && !adding
-                  ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
+                isFormValid && !saving
+                  ? editingId ? 'bg-amber-500 text-white hover:bg-amber-600 shadow-sm' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
                   : 'bg-gray-100 text-gray-800 cursor-not-allowed'
               }`}
             >
-              {adding
+              {saving
                 ? <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Saving...</>
-                : <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>Add Expo</>}
+                : editingId
+                  ? <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>Update Expo</>
+                  : <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>Add Expo</>}
             </button>
           </div>
         </div>
@@ -493,15 +515,14 @@ function ExpoTab({
           <div className="divide-y divide-gray-100">
             {data.map((item, index) => {
               const isSelected = currentExpo?.id === item.id;
+              const isBeingEdited = editingId === item.id;
               const dates = Array.isArray(item.conduct_dates) ? item.conduct_dates : [];
               return (
                 <div key={item.id}
-                  className={`px-6 py-4 flex items-start transition-colors group ${isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50/50'}`}>
-                  {/* Serial */}
+                  className={`px-6 py-4 flex items-start transition-colors group ${isBeingEdited ? 'bg-amber-50/60' : isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50/50'}`}>
                   <div className="w-6 flex-shrink-0 mr-3 mt-0.5">
                     <span className="text-xs font-semibold text-gray-800">{index + 1}.</span>
                   </div>
-                  {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-semibold text-gray-900 text-sm">{item.expo_name}</p>
@@ -511,8 +532,10 @@ function ExpoTab({
                           Current Expo
                         </span>
                       )}
+                      {isBeingEdited && (
+                        <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Editing...</span>
+                      )}
                     </div>
-                    {/* Dates */}
                     {dates.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-1.5">
                         {dates.map(d => (
@@ -523,13 +546,9 @@ function ExpoTab({
                         ))}
                       </div>
                     )}
-                    {/* Remarks */}
-                    {item.remarks && (
-                      <p className="text-xs text-gray-500 mt-1 italic">"{item.remarks}"</p>
-                    )}
+                    {item.remarks && <p className="text-xs text-gray-500 mt-1 italic">"{item.remarks}"</p>}
                     <p className="text-xs text-gray-800 mt-1">Added {new Date(item.created_at).toLocaleDateString()}</p>
                   </div>
-                  {/* Actions */}
                   <div className="ml-4 flex-shrink-0 flex items-center gap-2">
                     {!isSelected ? (
                       <button
@@ -550,11 +569,8 @@ function ExpoTab({
                       <button
                         onClick={async () => {
                           setSettingId(item.id);
-                          try {
-                            await onSetCurrentExpo(null);
-                            cacheSelectedExpo(null);
-                            setCurrentExpo(null);
-                          } finally { setSettingId(null); }
+                          try { await onSetCurrentExpo(null); cacheSelectedExpo(null); setCurrentExpo(null); }
+                          finally { setSettingId(null); }
                         }}
                         disabled={settingId === item.id}
                         className="text-xs px-2.5 py-1 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 transition-all font-medium whitespace-nowrap disabled:opacity-50"
@@ -562,6 +578,19 @@ function ExpoTab({
                         {settingId === item.id ? '...' : 'Clear'}
                       </button>
                     )}
+                    {/* Edit button */}
+                    {!isBeingEdited && (
+                      <button
+                        onClick={() => startEdit(item)}
+                        className="opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
+                        title="Edit"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                    )}
+                    {/* Delete button */}
                     {showConfirm === item.id ? (
                       <div className="flex items-center gap-2">
                         <button onClick={() => setShowConfirm(null)} className="text-xs px-2 py-1 rounded text-gray-600 hover:bg-gray-200 transition">Cancel</button>
@@ -591,10 +620,11 @@ function ExpoTab({
 
 // ─── SIMPLE LIST TAB ──────────────────────────────────────────────────────────
 function SimpleListTab({
-  data, onAdd, onDelete, loading, fields, addLabel, tabLabel,
+  data, onAdd, onUpdate, onDelete, loading, fields, addLabel, tabLabel,
   isDeletable = true, isExpoTab = false, onSetCurrentExpo,
-  isCustomizable = false, expos = [], enquiryTypes = [],
+  isCustomizable = false, expos = [], enquiryTypes = [], industryTypes = [],
   onAddCustom, customData = [], customLoading = false, onDeleteCustom,
+  activeTab,
 }) {
   const [form, setForm] = useState({});
   const [adding, setAdding] = useState(false);
@@ -603,16 +633,66 @@ function SimpleListTab({
   const [currentExpo, setCurrentExpo] = useState(() => getSelectedExpo());
   const [settingId, setSettingId] = useState(null);
 
+  // Inline edit for the base list (sms/whatsapp general templates)
+  const [editingItem, setEditingItem] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  // Inline edit for custom entries list (enquiry/industry)
+  const [editingCustomItem, setEditingCustomItem] = useState(null);
+  const [editCustomForm, setEditCustomForm] = useState({});
+  const [savingCustomEdit, setSavingCustomEdit] = useState(false);
+
   // Unified add form for customizable tabs
   const [customExpoId, setCustomExpoId] = useState('');
   const [customEnquiryId, setCustomEnquiryId] = useState('');
+  const [customIndustryId, setCustomIndustryId] = useState('');
   const [customForm, setCustomForm] = useState({});
   const [addingCustom, setAddingCustom] = useState(false);
   const [deletingCustomId, setDeletingCustomId] = useState(null);
 
+  // Scoped enquiry/industry lists for sms/whatsapp — refreshed when expo changes
+  const [scopedEnquiryTypes, setScopedEnquiryTypes] = useState(enquiryTypes);
+  const [scopedIndustryTypes, setScopedIndustryTypes] = useState(industryTypes);
+
+  // When expo selection changes on sms/whatsapp tabs, re-fetch scoped lists from server
+  useEffect(() => {
+    if (activeTab !== 'sms' && activeTab !== 'whatsapp') return;
+    if (!customExpoId) {
+      // Expo blank = general: reset to base prop lists, clear dependent selects
+      setScopedEnquiryTypes(enquiryTypes);
+      setScopedIndustryTypes(industryTypes);
+      setCustomEnquiryId('');
+      setCustomIndustryId('');
+      return;
+    }
+    // Expo chosen: fetch scoped enquiry+industry from server
+    const apiCall = activeTab === 'sms'
+      ? masterApi.getSmsTemplatesForContext(customExpoId)
+      : masterApi.getWhatsappTemplatesForContext(customExpoId);
+    apiCall
+      .then(res => {
+        const d = res.data.data;
+        setScopedEnquiryTypes(d.enquiryTypes || enquiryTypes);
+        setScopedIndustryTypes(d.industryTypes || industryTypes);
+      })
+      .catch(() => {});
+    setCustomEnquiryId('');
+    setCustomIndustryId('');
+  }, [customExpoId, activeTab]);
+
+  // Keep scoped lists in sync if base props update (e.g. on first load) when no expo chosen
+  useEffect(() => {
+    if (!customExpoId) {
+      setScopedEnquiryTypes(enquiryTypes);
+      setScopedIndustryTypes(industryTypes);
+    }
+  }, [enquiryTypes, industryTypes]);
+
   // Filter for viewing custom entries
   const [filterExpoId, setFilterExpoId] = useState('');
   const [filterEnquiryId, setFilterEnquiryId] = useState('');
+  const [filterIndustryId, setFilterIndustryId] = useState('');
 
   const isFormValid = fields.every((f) => form[f.name]?.trim());
   const isCustomFormValid = fields.every((f) => customForm[f.name]?.trim());
@@ -631,9 +711,32 @@ function SimpleListTab({
         ...customForm,
         expo_id: customExpoId || null,
         enquiry_type_id: customEnquiryId || null,
+        industry_type_id: customIndustryId || null,
       });
       setCustomForm({});
     } finally { setAddingCustom(false); }
+  };
+
+  // Save edit for base list items (sms/whatsapp general templates)
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+    setSavingEdit(true);
+    try {
+      await onUpdate(editingItem.id, editForm);
+      setEditingItem(null);
+      setEditForm({});
+    } finally { setSavingEdit(false); }
+  };
+
+  // Save edit for custom entries (enquiry/industry)
+  const handleSaveCustomEdit = async () => {
+    if (!editingCustomItem) return;
+    setSavingCustomEdit(true);
+    try {
+      await onUpdate(editingCustomItem.id, editCustomForm);
+      setEditingCustomItem(null);
+      setEditCustomForm({});
+    } finally { setSavingCustomEdit(false); }
   };
 
   const handleDelete = async (id) => {
@@ -646,12 +749,48 @@ function SimpleListTab({
   const inputCls = 'w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200';
   const selectCls = `${inputCls} appearance-none cursor-pointer`;
 
+  // Scoped lists for the filter bar — driven by filterExpoId
+  const [filterScopedEnquiryTypes, setFilterScopedEnquiryTypes] = useState(enquiryTypes);
+  const [filterScopedIndustryTypes, setFilterScopedIndustryTypes] = useState(industryTypes);
+
+  useEffect(() => {
+    if (activeTab !== 'sms' && activeTab !== 'whatsapp') return;
+    if (!filterExpoId || filterExpoId === '__general__') {
+      setFilterScopedEnquiryTypes(enquiryTypes);
+      setFilterScopedIndustryTypes(industryTypes);
+      setFilterEnquiryId('');
+      setFilterIndustryId('');
+      return;
+    }
+    const apiCall = activeTab === 'sms'
+      ? masterApi.getSmsTemplatesForContext(filterExpoId)
+      : masterApi.getWhatsappTemplatesForContext(filterExpoId);
+    apiCall
+      .then(res => {
+        const d = res.data.data;
+        setFilterScopedEnquiryTypes(d.enquiryTypes || enquiryTypes);
+        setFilterScopedIndustryTypes(d.industryTypes || industryTypes);
+      })
+      .catch(() => {});
+    setFilterEnquiryId('');
+    setFilterIndustryId('');
+  }, [filterExpoId, activeTab]);
+
+  useEffect(() => {
+    if (!filterExpoId || filterExpoId === '__general__') {
+      setFilterScopedEnquiryTypes(enquiryTypes);
+      setFilterScopedIndustryTypes(industryTypes);
+    }
+  }, [enquiryTypes, industryTypes]);
+
   // Filter custom entries for display
   const shownCustom = customData.filter(item => {
     if (filterExpoId === '__general__' && item.expo_id != null) return false;
     if (filterExpoId && filterExpoId !== '__general__' && String(item.expo_id) !== String(filterExpoId)) return false;
     if (filterEnquiryId === '__general__' && item.enquiry_type_id != null) return false;
     if (filterEnquiryId && filterEnquiryId !== '__general__' && String(item.enquiry_type_id) !== String(filterEnquiryId)) return false;
+    if (filterIndustryId === '__general__' && item.industry_type_id != null) return false;
+    if (filterIndustryId && filterIndustryId !== '__general__' && String(item.industry_type_id) !== String(filterIndustryId)) return false;
     return true;
   });
 
@@ -667,12 +806,13 @@ function SimpleListTab({
               <h3 className="font-semibold text-blue-800 text-sm">{addLabel}</h3>
             </div>
             <span className="text-[11.5px] uppercase tracking-wider text-blue-400 font-semibold hidden sm:block">
-              Leave expo/enquiry blank = General
+              Leave expo blank = General (all expos)
             </span>
           </div>
           <div className="p-6 space-y-4">
-            {/* Context selectors */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Context selectors — vary by tab */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Expo — always shown */}
               <div>
                 <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">
                   Expo{' '}
@@ -686,19 +826,44 @@ function SimpleListTab({
                   <ChevronDown />
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">
-                  Enquiry Type{' '}
-                  <span className="text-gray-800 font-normal normal-case text-[11.5px]">(blank = all types)</span>
-                </label>
-                <div className="relative">
-                  <select value={customEnquiryId} onChange={(e) => setCustomEnquiryId(e.target.value)} className={selectCls}>
-                    <option value="">— General (All Enquiry Types) —</option>
-                    {enquiryTypes.map((eq) => <option key={eq.id} value={eq.id}>{eq.name}</option>)}
-                  </select>
-                  <ChevronDown />
+
+              {/* Enquiry Type — shown for sms and whatsapp only */}
+              {(activeTab === 'sms' || activeTab === 'whatsapp') && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">
+                    Enquiry Type{' '}
+                    <span className="text-gray-800 font-normal normal-case text-[11.5px]">
+                      {customExpoId ? '(expo-scoped)' : '(blank = all types)'}
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <select value={customEnquiryId} onChange={(e) => setCustomEnquiryId(e.target.value)} className={selectCls}>
+                      <option value="">— General (All Enquiry Types) —</option>
+                      {scopedEnquiryTypes.map((eq) => <option key={eq.id} value={eq.id}>{eq.name}</option>)}
+                    </select>
+                    <ChevronDown />
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Industry Type — shown for sms and whatsapp only */}
+              {(activeTab === 'sms' || activeTab === 'whatsapp') && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">
+                    Industry Type{' '}
+                    <span className="text-gray-800 font-normal normal-case text-[11.5px]">
+                      {customExpoId ? '(general + expo-specific)' : '(blank = all types)'}
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <select value={customIndustryId} onChange={(e) => setCustomIndustryId(e.target.value)} className={selectCls}>
+                      <option value="">— General (All Industry Types) —</option>
+                      {scopedIndustryTypes.map((it) => <option key={it.id} value={it.id}>{it.name}</option>)}
+                    </select>
+                    <ChevronDown />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Entry fields */}
@@ -736,11 +901,20 @@ function SimpleListTab({
                       {expos.find(e => e.id == customExpoId)?.expo_name || `Expo #${customExpoId}`}
                     </span>
                   : <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full text-[11.5px] font-medium">All Expos</span>}
-                {customEnquiryId
-                  ? <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[11.5px] font-semibold">
-                      {enquiryTypes.find(e => e.id == customEnquiryId)?.name || `Enquiry #${customEnquiryId}`}
-                    </span>
-                  : <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full text-[11.5px] font-medium">All Enquiry Types</span>}
+                {(activeTab === 'sms' || activeTab === 'whatsapp') && (
+                  customEnquiryId
+                    ? <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[11.5px] font-semibold">
+                        {enquiryTypes.find(e => e.id == customEnquiryId)?.name || `Enquiry #${customEnquiryId}`}
+                      </span>
+                    : <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full text-[11.5px] font-medium">All Enquiry Types</span>
+                )}
+                {(activeTab === 'sms' || activeTab === 'whatsapp') && (
+                  customIndustryId
+                    ? <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-[11.5px] font-semibold">
+                        {industryTypes.find(i => i.id == customIndustryId)?.name || `Industry #${customIndustryId}`}
+                      </span>
+                    : <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full text-[11.5px] font-medium">All Industry Types</span>
+                )}
               </span>
               <button
                 onClick={handleAddCustom}
@@ -841,21 +1015,39 @@ function SimpleListTab({
                 </select>
                 <ChevronDown />
               </div>
-              <div className="relative">
-                <select
-                  value={filterEnquiryId}
-                  onChange={(e) => setFilterEnquiryId(e.target.value)}
-                  className="pl-3 pr-8 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer"
-                >
-                  <option value="">All Enquiry Types</option>
-                  <option value="__general__">General only</option>
-                  {enquiryTypes.map((eq) => <option key={eq.id} value={eq.id}>{eq.name}</option>)}
-                </select>
-                <ChevronDown />
-              </div>
-              {(filterExpoId || filterEnquiryId) && (
+              {/* Enquiry filter — sms and whatsapp only */}
+              {(activeTab === 'sms' || activeTab === 'whatsapp') && (
+                <div className="relative">
+                  <select
+                    value={filterEnquiryId}
+                    onChange={(e) => setFilterEnquiryId(e.target.value)}
+                    className="pl-3 pr-8 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer"
+                  >
+                    <option value="">All Enquiry Types</option>
+                    <option value="__general__">General only</option>
+                    {filterScopedEnquiryTypes.map((eq) => <option key={eq.id} value={eq.id}>{eq.name}</option>)}
+                  </select>
+                  <ChevronDown />
+                </div>
+              )}
+              {/* Industry filter — sms and whatsapp only */}
+              {(activeTab === 'sms' || activeTab === 'whatsapp') && (
+                <div className="relative">
+                  <select
+                    value={filterIndustryId}
+                    onChange={(e) => setFilterIndustryId(e.target.value)}
+                    className="pl-3 pr-8 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer"
+                  >
+                    <option value="">All Industry Types</option>
+                    <option value="__general__">General only</option>
+                    {filterScopedIndustryTypes.map((it) => <option key={it.id} value={it.id}>{it.name}</option>)}
+                  </select>
+                  <ChevronDown />
+                </div>
+              )}
+              {(filterExpoId || filterEnquiryId || filterIndustryId) && (
                 <button
-                  onClick={() => { setFilterExpoId(''); setFilterEnquiryId(''); }}
+                  onClick={() => { setFilterExpoId(''); setFilterEnquiryId(''); setFilterIndustryId(''); }}
                   className="text-xs text-blue-600 hover:text-blue-800 font-medium px-2 py-1 rounded hover:bg-blue-50 transition-all"
                 >
                   Clear
@@ -878,41 +1070,119 @@ function SimpleListTab({
               {shownCustom.map((item, idx) => {
                 const name = item.title || item.name || '—';
                 const expoLabel = item.expo_id
-                  ? (expos.find(e => e.id == item.expo_id)?.expo_name || `Expo #${item.expo_id}`)
+                  ? (expos.find(e => e.id == item.expo_id)?.expo_name || item.expo_name || `Expo #${item.expo_id}`)
                   : null;
                 const eqLabel = item.enquiry_type_id
                   ? (enquiryTypes.find(e => e.id == item.enquiry_type_id)?.name || `Enquiry #${item.enquiry_type_id}`)
                   : null;
+                const isEditingThis = editingCustomItem?.id === item.id;
+
                 return (
-                  <div key={item.id} className="flex items-start justify-between px-6 py-4 hover:bg-gray-50/60 group">
-                    <div className="flex items-start gap-3">
-                      <span className="text-xs text-gray-800 w-5 mt-0.5 flex-shrink-0">{idx + 1}.</span>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">{name}</p>
-                        {item.subject && <p className="text-xs text-gray-500 mt-0.5">Subject: {item.subject}</p>}
-                        {item.content && <p className="text-xs text-gray-800 mt-0.5 line-clamp-2">{item.content}</p>}
-                        <div className="flex gap-2 mt-1.5 flex-wrap">
-                          {expoLabel
-                            ? <span className="text-[11.5px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">{expoLabel}</span>
-                            : <span className="text-[11.5px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">All Expos</span>}
-                          {eqLabel
-                            ? <span className="text-[11.5px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">{eqLabel}</span>
-                            : <span className="text-[11.5px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">All Enquiry Types</span>}
+                  <div key={item.id} className={`transition-colors group ${isEditingThis ? 'bg-amber-50/40' : 'hover:bg-gray-50/60'}`}>
+                    {isEditingThis ? (
+                      /* ── Inline edit form for custom entry ── */
+                      <div className="px-6 py-4 space-y-3">
+                        <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Editing entry</p>
+                        {fields.map((f) => (
+                          <div key={f.name}>
+                            <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">{f.label}</label>
+                            {f.type === 'textarea' ? (
+                              <textarea
+                                value={editCustomForm[f.name] || ''}
+                                onChange={(e) => setEditCustomForm({ ...editCustomForm, [f.name]: e.target.value })}
+                                className={`${inputCls} resize-none`}
+                                rows={3}
+                              />
+                            ) : (
+                              <input type="text" value={editCustomForm[f.name] || ''} onChange={(e) => setEditCustomForm({ ...editCustomForm, [f.name]: e.target.value })} className={inputCls} />
+                            )}
+                          </div>
+                        ))}
+                        {/* Expo selector in edit mode */}
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">Expo</label>
+                          <div className="relative">
+                            <select value={editCustomForm.expo_id || ''} onChange={(e) => setEditCustomForm({ ...editCustomForm, expo_id: e.target.value || null })} className={`${selectCls}`}>
+                              <option value="">— General (All Expos) —</option>
+                              {expos.map((ex) => <option key={ex.id} value={ex.id}>{ex.expo_name}</option>)}
+                            </select>
+                            <ChevronDown />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 pt-1">
+                          <button
+                            onClick={handleSaveCustomEdit}
+                            disabled={savingCustomEdit || fields.some(f => !editCustomForm[f.name]?.trim())}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                          >
+                            {savingCustomEdit ? 'Saving...' : 'Save Changes'}
+                          </button>
+                          <button onClick={() => { setEditingCustomItem(null); setEditCustomForm({}); }} className="px-3 py-2 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-200 transition-all">
+                            Cancel
+                          </button>
                         </div>
                       </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setDeletingCustomId(item.id);
-                        onDeleteCustom(item.id).finally(() => setDeletingCustomId(null));
-                      }}
-                      disabled={deletingCustomId === item.id}
-                      className="opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center rounded-lg text-gray-800 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50 ml-2 flex-shrink-0"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
+                    ) : (
+                      /* ── Normal row view ── */
+                      <div className="flex items-start justify-between px-6 py-4">
+                        <div className="flex items-start gap-3">
+                          <span className="text-xs text-gray-800 w-5 mt-0.5 flex-shrink-0">{idx + 1}.</span>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">{name}</p>
+                            {item.subject && <p className="text-xs text-gray-500 mt-0.5">Subject: {item.subject}</p>}
+                            {item.content && <p className="text-xs text-gray-800 mt-0.5 line-clamp-2">{item.content}</p>}
+                            <div className="flex gap-2 mt-1.5 flex-wrap">
+                              {expoLabel
+                                ? <span className="text-[11.5px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">{expoLabel}</span>
+                                : <span className="text-[11.5px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">General</span>}
+                              {(activeTab === 'sms' || activeTab === 'whatsapp') && (
+                                eqLabel
+                                  ? <span className="text-[11.5px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">{eqLabel}</span>
+                                  : <span className="text-[11.5px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">All Enquiry Types</span>
+                              )}
+                              {(activeTab === 'sms' || activeTab === 'whatsapp') && (() => {
+                                const indLabel = item.industry_type_id
+                                  ? (industryTypes.find(i => i.id == item.industry_type_id)?.name || `Industry #${item.industry_type_id}`)
+                                  : null;
+                                return indLabel
+                                  ? <span className="text-[11.5px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">{indLabel}</span>
+                                  : <span className="text-[11.5px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">All Industry Types</span>;
+                              })()}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                          {/* Edit button */}
+                          <button
+                            onClick={() => {
+                              const initForm = { expo_id: item.expo_id || '' };
+                              fields.forEach(f => { initForm[f.name] = item[f.name] || ''; });
+                              setEditingCustomItem(item);
+                              setEditCustomForm(initForm);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
+                            title="Edit"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          {/* Delete button */}
+                          <button
+                            onClick={() => {
+                              setDeletingCustomId(item.id);
+                              onDeleteCustom(item.id).finally(() => setDeletingCustomId(null));
+                            }}
+                            disabled={deletingCustomId === item.id}
+                            className="opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center rounded-lg text-gray-800 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -921,15 +1191,11 @@ function SimpleListTab({
         </div>
       )}
 
-      {/* ══ GENERAL LIST — only shown for non-customizable tabs ══
-           For Industry/SMS/WhatsApp the unified form above handles both
-           general and specific entries, so this list is not needed there. ══ */}
+      {/* ══ GENERAL LIST — only shown for non-customizable tabs ══ */}
       {!isCustomizable && (
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-800 text-sm">
-            {tabLabel}
-          </h3>
+          <h3 className="font-semibold text-gray-800 text-sm">{tabLabel}</h3>
           <span className="text-xs bg-gray-200 text-gray-700 px-2.5 py-1 rounded-full font-medium">{data.length}</span>
         </div>
         {loading ? (
@@ -941,95 +1207,101 @@ function SimpleListTab({
             {data.map((item, index) => {
               const displayName = item.expo_name || item.title || item.name || '—';
               const isSelected = isExpoTab && currentExpo?.id === item.id;
+              const isEditing = editingItem?.id === item.id;
+
               return (
-                <div
-                  key={item.id}
-                  className={`px-6 py-4 flex items-start transition-colors group ${
-                    isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50/50'
-                  }`}
-                >
-                  <div className="w-6 flex-shrink-0 mr-3 mt-0.5">
-                    <span className="text-xs font-semibold text-gray-800">{index + 1}.</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-medium text-gray-900 text-sm">{displayName}</p>
-                      {isSelected && (
-                        <span className="inline-flex items-center gap-1 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full font-medium">
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                          Current Expo
-                        </span>
-                      )}
-                    </div>
-                    {item.subject && <p className="text-xs text-gray-500 mt-0.5">Subject: {item.subject}</p>}
-                    {item.content && <p className="text-xs text-gray-800 mt-0.5 line-clamp-2">{item.content}</p>}
-                    {item.status && <p className="text-xs text-gray-500 mt-0.5 capitalize">Status: {item.status}</p>}
-                    <p className="text-xs text-gray-800 mt-1">Added {new Date(item.created_at).toLocaleDateString()}</p>
-                  </div>
-                  <div className="ml-4 flex-shrink-0 flex items-center gap-2">
-                    {isExpoTab && !isSelected && (
-                      <button
-                        onClick={async () => {
-                          setSettingId(item.id);
-                          try {
-                            await onSetCurrentExpo(item.id);
-                            cacheSelectedExpo({ id: item.id, expo_name: item.expo_name });
-                            setCurrentExpo({ id: item.id, expo_name: item.expo_name });
-                          } finally { setSettingId(null); }
-                        }}
-                        disabled={settingId === item.id}
-                        className="opacity-0 group-hover:opacity-100 text-xs px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-600 hover:text-white transition-all font-medium whitespace-nowrap disabled:opacity-50"
-                      >
-                        {settingId === item.id ? '...' : 'Set Current'}
-                      </button>
-                    )}
-                    {isExpoTab && isSelected && (
-                      <button
-                        onClick={async () => {
-                          setSettingId(item.id);
-                          try {
-                            await onSetCurrentExpo(null);
-                            cacheSelectedExpo(null);
-                            setCurrentExpo(null);
-                          } finally { setSettingId(null); }
-                        }}
-                        disabled={settingId === item.id}
-                        className="text-xs px-2.5 py-1 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 transition-all font-medium whitespace-nowrap disabled:opacity-50"
-                      >
-                        {settingId === item.id ? '...' : 'Clear'}
-                      </button>
-                    )}
-                    {isDeletable && (
-                      showConfirm === item.id ? (
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setShowConfirm(null)}
-                            className="text-xs px-2 py-1 rounded text-gray-600 hover:bg-gray-200 transition"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={() => handleDelete(item.id)}
-                            disabled={deletingId === item.id}
-                            className="text-xs px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
-                          >
-                            {deletingId === item.id ? 'Deleting...' : 'Confirm'}
-                          </button>
+                <div key={item.id} className={`transition-colors group ${isEditing ? 'bg-amber-50/40' : isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50/50'}`}>
+                  {/* ── Inline edit form ── */}
+                  {isEditing ? (
+                    <div className="px-6 py-4 space-y-3">
+                      <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">Editing #{index + 1}</p>
+                      {fields.map((f) => (
+                        <div key={f.name}>
+                          <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">{f.label}</label>
+                          {f.type === 'textarea' ? (
+                            <textarea
+                              value={editForm[f.name] || ''}
+                              onChange={(e) => setEditForm({ ...editForm, [f.name]: e.target.value })}
+                              className={`${inputCls} resize-none`}
+                              rows={3}
+                            />
+                          ) : (
+                            <input type="text" value={editForm[f.name] || ''} onChange={(e) => setEditForm({ ...editForm, [f.name]: e.target.value })} className={inputCls} />
+                          )}
                         </div>
-                      ) : (
+                      ))}
+                      <div className="flex items-center gap-2 pt-1">
                         <button
-                          onClick={() => setShowConfirm(item.id)}
-                          className="opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center rounded-lg text-gray-800 hover:text-red-600 hover:bg-red-50 transition-all"
+                          onClick={handleSaveEdit}
+                          disabled={savingEdit || fields.some(f => !editForm[f.name]?.trim())}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                         >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
+                          {savingEdit ? 'Saving...' : 'Save Changes'}
                         </button>
-                      )
-                    )}
-                  </div>
+                        <button onClick={() => { setEditingItem(null); setEditForm({}); }} className="px-3 py-2 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-200 transition-all">
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="px-6 py-4 flex items-start">
+                      <div className="w-6 flex-shrink-0 mr-3 mt-0.5">
+                        <span className="text-xs font-semibold text-gray-800">{index + 1}.</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 text-sm">{displayName}</p>
+                        {item.subject && <p className="text-xs text-gray-500 mt-0.5">Subject: {item.subject}</p>}
+                        {item.content && <p className="text-xs text-gray-800 mt-0.5 line-clamp-2">{item.content}</p>}
+                        {item.status && <p className="text-xs text-gray-500 mt-0.5 capitalize">Status: {item.status}</p>}
+                        <p className="text-xs text-gray-800 mt-1">Added {new Date(item.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <div className="ml-4 flex-shrink-0 flex items-center gap-2">
+                        {isExpoTab && !isSelected && (
+                          <button onClick={async () => { setSettingId(item.id); try { await onSetCurrentExpo(item.id); cacheSelectedExpo({ id: item.id, expo_name: item.expo_name }); setCurrentExpo({ id: item.id, expo_name: item.expo_name }); } finally { setSettingId(null); } }} disabled={settingId === item.id} className="opacity-0 group-hover:opacity-100 text-xs px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-600 hover:text-white transition-all font-medium whitespace-nowrap disabled:opacity-50">
+                            {settingId === item.id ? '...' : 'Set Current'}
+                          </button>
+                        )}
+                        {isExpoTab && isSelected && (
+                          <button onClick={async () => { setSettingId(item.id); try { await onSetCurrentExpo(null); cacheSelectedExpo(null); setCurrentExpo(null); } finally { setSettingId(null); } }} disabled={settingId === item.id} className="text-xs px-2.5 py-1 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 transition-all font-medium whitespace-nowrap disabled:opacity-50">
+                            {settingId === item.id ? '...' : 'Clear'}
+                          </button>
+                        )}
+                        {/* Edit button — only for tabs with update support */}
+                        {onUpdate && !isExpoTab && (
+                          <button
+                            onClick={() => {
+                              const initForm = {};
+                              fields.forEach(f => { initForm[f.name] = item[f.name] || ''; });
+                              setEditingItem(item);
+                              setEditForm(initForm);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
+                            title="Edit"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                        )}
+                        {isDeletable && (
+                          showConfirm === item.id ? (
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => setShowConfirm(null)} className="text-xs px-2 py-1 rounded text-gray-600 hover:bg-gray-200 transition">Cancel</button>
+                              <button onClick={() => handleDelete(item.id)} disabled={deletingId === item.id} className="text-xs px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
+                                {deletingId === item.id ? 'Deleting...' : 'Confirm'}
+                              </button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setShowConfirm(item.id)} className="opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center rounded-lg text-gray-800 hover:text-red-600 hover:bg-red-50 transition-all">
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -1048,15 +1320,18 @@ export default function MasterPage() {
     sources: [], expos: [], enquiry: [], industry: [], sms: [], whatsapp: [],
   });
   const [customData, setCustomData] = useState({
-    industry: [], sms: [], whatsapp: [],
+    enquiry: [], industry: [], sms: [], whatsapp: [],
   });
   const [customLoading, setCustomLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [expos, setExpos] = useState([]);
   const [enquiryTypes, setEnquiryTypes] = useState([]);
+  const [industryTypes, setIndustryTypes] = useState([]);
   const { addToast } = useToast();
 
-  // Load expos and enquiry types for the context selectors once
+  // Load expos and enquiry types for context selectors on mount
+  // Note: industryTypes are no longer loaded here — SMS/WhatsApp tabs fetch them
+  // dynamically from the context API when an expo is selected
   useEffect(() => {
     Promise.all([masterApi.getExpos(), masterApi.getEnquiryTypes()])
       .then(([e, eq]) => {
@@ -1077,7 +1352,7 @@ export default function MasterPage() {
 
   // Load custom data when switching to a customizable tab
   useEffect(() => {
-    if (['industry', 'sms', 'whatsapp'].includes(activeTab)) {
+    if (['enquiry', 'industry', 'sms', 'whatsapp'].includes(activeTab)) {
       loadCustomData(activeTab);
     }
   }, [activeTab]);
@@ -1087,16 +1362,18 @@ export default function MasterPage() {
     try {
       let res;
       switch (tab) {
-        case 'industry': res = await masterApi.getIndustryTypesForContext(); break;
-        case 'sms':      res = await masterApi.getSmsTemplatesForContext();  break;
+        case 'enquiry':  res = await masterApi.getEnquiryTypes();                break;
+        case 'industry': res = await masterApi.getIndustryTypes();               break;
+        case 'sms':      res = await masterApi.getSmsTemplatesForContext();      break;
         case 'whatsapp': res = await masterApi.getWhatsappTemplatesForContext(); break;
         default: return;
       }
-      // New API returns { general: [...], custom: [...] }
-      // Fallback handles old flat-array shape just in case
       const resData = res.data.data;
       let custom = [];
-      if (Array.isArray(resData)) {
+      if (tab === 'enquiry' || tab === 'industry') {
+        // getEnquiryTypes / getIndustryTypes return flat array — all rows are entries with expo_id
+        custom = Array.isArray(resData) ? resData : [];
+      } else if (Array.isArray(resData)) {
         custom = resData.filter(d => d.type === 'custom');
       } else if (resData && typeof resData === 'object') {
         custom = resData.custom || [];
@@ -1156,6 +1433,23 @@ export default function MasterPage() {
     }
   };
 
+  const handleUpdate = async (tab, id, form) => {
+    try {
+      switch (tab) {
+        case 'expos':     await masterApi.updateExpo(id, form);            break;
+        case 'enquiry':   await masterApi.updateEnquiryType(id, form);     break;
+        case 'industry':  await masterApi.updateIndustryType(id, form);    break;
+        case 'sms':       await masterApi.updateSmsTemplate(id, form);     break;
+        case 'whatsapp':  await masterApi.updateWhatsappTemplate(id, form); break;
+      }
+      addToast('Updated successfully', 'success');
+      loadTab(tab);
+      if (['enquiry', 'industry'].includes(tab)) loadCustomData(tab);
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to update', 'error');
+    }
+  };
+
   const handleDelete = async (tab, id) => {
     try {
       switch (tab) {
@@ -1175,13 +1469,13 @@ export default function MasterPage() {
   const handleAddCustom = async (tab, form) => {
     try {
       switch (tab) {
-        case 'industry': await masterApi.createCustomIndustryType(form); break;
-        case 'sms':      await masterApi.createCustomSmsTemplate(form);  break;
-        case 'whatsapp': await masterApi.createCustomWhatsappTemplate(form); break;
+        case 'enquiry':  await masterApi.createEnquiryType(form);             break;
+        case 'industry': await masterApi.createIndustryType(form);            break;
+        case 'sms':      await masterApi.createCustomSmsTemplate(form);       break;
+        case 'whatsapp': await masterApi.createCustomWhatsappTemplate(form);  break;
       }
       addToast('Entry saved successfully', 'success');
-      loadCustomData(tab);  // reload custom list
-      // Also reload the general list so it stays fresh
+      loadCustomData(tab);
       loadTab(tab);
     } catch (err) {
       addToast(err.response?.data?.message || 'Failed to save entry', 'error');
@@ -1190,14 +1484,15 @@ export default function MasterPage() {
 
   const handleDeleteCustom = async (tab, id) => {
     try {
-      // Custom entries are stored in *_custom tables — delete from those via dedicated endpoints
       switch (tab) {
-        case 'industry': await masterApi.deleteCustomIndustryType(id); break;
-        case 'sms':      await masterApi.deleteCustomSmsTemplate(id);  break;
-        case 'whatsapp': await masterApi.deleteCustomWhatsappTemplate(id); break;
+        case 'enquiry':  await masterApi.deleteEnquiryType(id);              break;
+        case 'industry': await masterApi.deleteIndustryType(id);             break;
+        case 'sms':      await masterApi.deleteCustomSmsTemplate(id);        break;
+        case 'whatsapp': await masterApi.deleteCustomWhatsappTemplate(id);   break;
       }
       addToast('Custom entry deleted', 'success');
       loadCustomData(tab);
+      loadTab(tab);
     } catch {
       addToast('Failed to delete custom entry', 'error');
     }
@@ -1214,11 +1509,13 @@ export default function MasterPage() {
       addLabel: 'Add Enquiry Type',
       fields: [{ name: 'name', placeholder: 'Enter enquiry type name...', label: 'Name' }],
       isDeletable: true,
+      isCustomizable: true,
     },
     industry: {
       addLabel: 'Add Industry Type',
       fields: [{ name: 'name', placeholder: 'Enter industry type name...', label: 'Name' }],
       isDeletable: true,
+      isCustomizable: true,
     },
     sms: {
       addLabel: 'Add SMS Template',
@@ -1227,6 +1524,7 @@ export default function MasterPage() {
         { name: 'content', placeholder: 'Enter SMS content...', label: 'Content', type: 'textarea' },
       ],
       isDeletable: true,
+      isCustomizable: true,
     },
     whatsapp: {
       addLabel: 'Add WhatsApp Template',
@@ -1235,6 +1533,7 @@ export default function MasterPage() {
         { name: 'content', placeholder: 'Enter WhatsApp message content...', label: 'Content', type: 'textarea' },
       ],
       isDeletable: true,
+      isCustomizable: true,
     },
   };
 
@@ -1299,6 +1598,7 @@ export default function MasterPage() {
             data={data.expos}
             loading={loading}
             onAdd={(form) => handleAdd('expos', form)}
+            onUpdate={(id, form) => handleUpdate('expos', id, form)}
             onDelete={(id) => handleDelete('expos', id)}
             onSetCurrentExpo={handleSetCurrentExpo}
           />
@@ -1308,6 +1608,7 @@ export default function MasterPage() {
             data={data[activeTab]}
             loading={loading}
             onAdd={(form) => handleAdd(activeTab, form)}
+            onUpdate={(id, form) => handleUpdate(activeTab, id, form)}
             onDelete={(id) => handleDelete(activeTab, id)}
             fields={tabConfig[activeTab].fields}
             addLabel={tabConfig[activeTab].addLabel}
@@ -1315,9 +1616,11 @@ export default function MasterPage() {
             isDeletable={tabConfig[activeTab].isDeletable}
             isExpoTab={activeTab === 'expos'}
             onSetCurrentExpo={handleSetCurrentExpo}
-            isCustomizable={['industry', 'sms', 'whatsapp'].includes(activeTab)}
+            isCustomizable={tabConfig[activeTab].isCustomizable || false}
             expos={expos}
             enquiryTypes={enquiryTypes}
+            industryTypes={industryTypes}
+            activeTab={activeTab}
             onAddCustom={(form) => handleAddCustom(activeTab, form)}
             customData={customData[activeTab] || []}
             customLoading={customLoading}
