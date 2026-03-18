@@ -31,7 +31,7 @@ function Modal({ title, onClose, children, size = 'md' }) {
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       <div
         className={`relative bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-hidden ${
-          size === 'lg' ? 'max-w-2xl' : 'max-w-lg'
+          size === 'lg' ? 'max-w-4xl' : 'max-w-lg'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
