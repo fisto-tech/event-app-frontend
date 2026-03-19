@@ -825,12 +825,12 @@ function SimpleListTab({
       {/* ══ CUSTOMIZABLE TABS: single unified add form ══ */}
       {isCustomizable ? (
         <div className="bg-white rounded-xl border border-blue-200 shadow-sm overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-50 to-white px-6 py-4 border-b border-blue-100 flex items-center justify-between">
+          <div className="bg-blue-50 px-6 py-4 border-b border-blue-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
              
               <h3 className="font-semibold text-blue-800 text-sm">{addLabel}</h3>
             </div>
-            <span className="text-[11.5px] uppercase tracking-wider text-blue-400 font-semibold hidden sm:block">
+            <span className="text-[11.5px] uppercase tracking-wider text-blue-800 font-semibold hidden sm:block">
               Leave expo blank = General (all expos)
             </span>
           </div>
