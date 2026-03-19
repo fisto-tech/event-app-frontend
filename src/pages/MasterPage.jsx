@@ -77,7 +77,7 @@ function LoadingState() {
 }
 
 // ─── SOURCES READ-ONLY COMPONENT ──────────────────────────────────────────────
-function SourcesTab({ data, loading }) {
+function SourcesTab({ data, loading, onRefresh }) {
   if (loading) return <LoadingState />;
 
   return (
@@ -86,7 +86,16 @@ function SourcesTab({ data, loading }) {
         <div className="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold text-gray-800 text-sm">All Sources</h3>
-            <span className="ml-auto text-xs bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full font-medium">
+            <button
+              onClick={onRefresh}
+              className="ml-auto w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+              title="Refresh"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <span className="text-xs bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full font-medium">
               {data.length}
             </span>
           </div>
@@ -378,7 +387,7 @@ function MultiDatePicker({ dates = [], onChange }) {
 // ─── EXPO TAB (dedicated — has name + dates + remarks) ───────────────────────
 function ExpoTab({
   data, loading, onAdd, onUpdate, onDelete,
-  onSetCurrentExpo, currentExpoFromParent,
+  onSetCurrentExpo, currentExpoFromParent, onRefresh,
 }) {
   const inputCls = 'w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200';
 
@@ -509,7 +518,18 @@ function ExpoTab({
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h3 className="font-semibold text-gray-800 text-sm">Expo Names</h3>
-          <span className="text-xs bg-gray-200 text-gray-700 px-2.5 py-1 rounded-full font-medium">{data.length}</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onRefresh}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+              title="Refresh"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <span className="text-xs bg-gray-200 text-gray-700 px-2.5 py-1 rounded-full font-medium">{data.length}</span>
+          </div>
         </div>
         {loading ? <LoadingState /> : data.length === 0 ? <EmptyState label="expos" /> : (
           <div className="divide-y divide-gray-100">
@@ -623,8 +643,8 @@ function SimpleListTab({
   data, onAdd, onUpdate, onDelete, loading, fields, addLabel, tabLabel,
   isDeletable = true, isExpoTab = false, onSetCurrentExpo,
   isCustomizable = false, expos = [], enquiryTypes = [], industryTypes = [],
-  onAddCustom, customData = [], customLoading = false, onDeleteCustom,
-  activeTab,
+  onAddCustom, onUpdateCustom, customData = [], customLoading = false, onDeleteCustom,
+  activeTab, onRefresh,
 }) {
   const [form, setForm] = useState({});
   const [adding, setAdding] = useState(false);
@@ -733,7 +753,12 @@ function SimpleListTab({
     if (!editingCustomItem) return;
     setSavingCustomEdit(true);
     try {
-      await onUpdate(editingCustomItem.id, editCustomForm);
+      const formData = {
+        ...editCustomForm,
+        enquiry_type_id: editingCustomItem.enquiry_type_id || null,
+        industry_type_id: editingCustomItem.industry_type_id || null,
+      };
+      await onUpdateCustom(editingCustomItem.id, formData);
       setEditingCustomItem(null);
       setEditCustomForm({});
     } finally { setSavingCustomEdit(false); }
@@ -1003,6 +1028,15 @@ function SimpleListTab({
               </span>
             </h3>
             <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={onRefresh}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                title="Refresh"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
               <div className="relative">
                 <select
                   value={filterExpoId}
@@ -1196,7 +1230,18 @@ function SimpleListTab({
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h3 className="font-semibold text-gray-800 text-sm">{tabLabel}</h3>
-          <span className="text-xs bg-gray-200 text-gray-700 px-2.5 py-1 rounded-full font-medium">{data.length}</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onRefresh}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+              title="Refresh"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <span className="text-xs bg-gray-200 text-gray-700 px-2.5 py-1 rounded-full font-medium">{data.length}</span>
+          </div>
         </div>
         {loading ? (
           <LoadingState />
@@ -1396,6 +1441,13 @@ export default function MasterPage() {
     }
   };
 
+  const handleRefresh = async () => {
+    await loadTab(activeTab);
+    if (['enquiry', 'industry', 'sms', 'whatsapp'].includes(activeTab)) {
+      await loadCustomData(activeTab);
+    }
+  };
+
   const loadTab = async (tab) => {
     setLoading(true);
     try {
@@ -1445,6 +1497,21 @@ export default function MasterPage() {
       addToast('Updated successfully', 'success');
       loadTab(tab);
       if (['enquiry', 'industry'].includes(tab)) loadCustomData(tab);
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to update', 'error');
+    }
+  };
+
+  const handleUpdateCustom = async (tab, id, form) => {
+    try {
+      switch (tab) {
+        case 'sms':      await masterApi.updateCustomSmsTemplate(id, form);      break;
+        case 'whatsapp': await masterApi.updateCustomWhatsappTemplate(id, form); break;
+        case 'enquiry':  await masterApi.updateEnquiryType(id, form);            break;
+        case 'industry': await masterApi.updateIndustryType(id, form);           break;
+      }
+      addToast('Updated successfully', 'success');
+      loadCustomData(tab);
     } catch (err) {
       addToast(err.response?.data?.message || 'Failed to update', 'error');
     }
@@ -1591,7 +1658,7 @@ export default function MasterPage() {
 
         {/* Tab Content */}
         {activeTab === 'sources' ? (
-          <SourcesTab data={data[activeTab]} loading={loading} />
+          <SourcesTab data={data[activeTab]} loading={loading} onRefresh={handleRefresh} />
         ) : activeTab === 'expos' ? (
           <ExpoTab
             key="expos"
@@ -1601,6 +1668,7 @@ export default function MasterPage() {
             onUpdate={(id, form) => handleUpdate('expos', id, form)}
             onDelete={(id) => handleDelete('expos', id)}
             onSetCurrentExpo={handleSetCurrentExpo}
+            onRefresh={handleRefresh}
           />
         ) : (
           <SimpleListTab
@@ -1622,9 +1690,11 @@ export default function MasterPage() {
             industryTypes={industryTypes}
             activeTab={activeTab}
             onAddCustom={(form) => handleAddCustom(activeTab, form)}
+            onUpdateCustom={(id, form) => handleUpdateCustom(activeTab, id, form)}
             customData={customData[activeTab] || []}
             customLoading={customLoading}
             onDeleteCustom={(id) => handleDeleteCustom(activeTab, id)}
+            onRefresh={handleRefresh}
           />
         )}
       </div>

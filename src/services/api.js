@@ -83,6 +83,7 @@ export const masterApi = {
     return api.get('/master/sms-templates/context', { params });
   },
   createCustomSmsTemplate: (data) => api.post('/master/sms-templates/custom', data),
+  updateCustomSmsTemplate: (id, data) => api.put(`/master/sms-templates/custom/${id}`, data),
   deleteCustomSmsTemplate: (id) => api.delete(`/master/sms-templates/custom/${id}`),
 
   // WhatsApp Templates - Context Aware
@@ -95,6 +96,7 @@ export const masterApi = {
     return api.get('/master/whatsapp-templates/context', { params });
   },
   createCustomWhatsappTemplate: (data) => api.post('/master/whatsapp-templates/custom', data),
+  updateCustomWhatsappTemplate: (id, data) => api.put(`/master/whatsapp-templates/custom/${id}`, data),
   deleteCustomWhatsappTemplate: (id) => api.delete(`/master/whatsapp-templates/custom/${id}`),
 
   // Email Templates - Context Aware
